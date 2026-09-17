@@ -60,3 +60,36 @@
 | Qwen2.5-0.5B | gaussian | 2.02% | [1.43, 2.85] |
 | Qwen2.5-0.5B | binary +/-1 | 2.02% | [1.43, 2.85] |
 | Qwen2.5-0.5B | sparse (90% zero) | 0.52% | [0.26, 1.02] |
+
+## T7  precision ladder: where must fp32 go, bf16 batch 1 vs 8, 6,144 tokens
+
+| model | bf16 | fp32 head only | last 8 + head | first 8 + head | guided 8 + head | fp16, no fp32 | fp16 + guided 8 | all fp32 (sanity) |
+|---|---|---|---|---|---|---|---|---|
+| DeepSeek-R1-Distill-Qwen-1.5B | 6.38% (0%) | 1.94% (13%) | 1.33% (34%) | 0.60% (34%) | 0.68% (34%) | 0.00% (0%) | 0.00% (34%) | 0.00% (87%) |
+| Qwen2.5-0.5B | 8.92% (0%) | 2.72% (22%) | 1.30% (41%) | 0.81% (41%) | 0.86% (41%) | 0.02% (0%) | 0.00% (41%) | 0.00% (78%) |
+| Qwen2.5-1.5B | 8.04% (0%) | 1.51% (13%) | 0.94% (34%) | 1.07% (34%) | 0.93% (34%) | 0.00% (0%) | 0.00% (34%) | 0.00% (87%) |
+| Qwen3-1.7B | 5.58% (0%) | 1.99% (15%) | 1.42% (35%) | 1.04% (35%) | 1.06% (35%) | 0.00% (0%) | 0.00% (35%) | 0.00% (85%) |
+| pythia-410m (NeoX 0.41B) | 34.26% (0%) | 32.24% (13%) | 1.12% (38%) | 32.31% (38%) | 0.41% (38%) | 0.47% (0%) | 0.00% (38%) | 0.00% (87%) |
+
+Out-of-band rate, with the fraction of parameters held in fp32 in parentheses. 'guided 8' = the eight
+decoder layers with the largest per-layer divergence increment (T8), chosen on a separate 1,536-token calibration pass.
+
+## T8  where the divergence enters: b1-vs-b8 relative hidden-state divergence, by quarter of the stack
+
+| model | layers | Q1 | Q2 | Q3 | Q4 | after last layer | top-4 layers by increment |
+|---|---|---|---|---|---|---|---|
+| DeepSeek-R1-Distill-Qwen-1.5B | 28 | +1.1e-02 | +3.7e-03 | +8.6e-04 | -1.1e-03 | 0.014 | [0, 2, 3, 1] |
+| Qwen2.5-0.5B | 24 | +1.1e-02 | +2.1e-03 | -1.3e-03 | +5.0e-03 | 0.016 | [0, 23, 22, 2] |
+| Qwen2.5-1.5B | 28 | +1.0e-02 | +1.4e-03 | +3.9e-04 | +8.3e-04 | 0.013 | [0, 27, 1, 2] |
+| Qwen3-1.7B | 28 | +1.1e-02 | +4.7e-03 | -1.8e-03 | +1.5e-03 | 0.015 | [0, 27, 1, 2] |
+| pythia-410m (NeoX 0.41B) | 24 | +9.6e-03 | +1.4e-03 | +1.4e-02 | +9.0e-02 | 0.115 | [23, 19, 21, 22] |
+
+Increment of the relative L2 divergence between the batch-1 and batch-8 hidden states, summed per quarter;
+a positive quarter is where the two batch shapes drift apart, a negative one is where later layers partly re-align them.
+
+## T9  does fp16 overflow on the larger models (8,192 tokens, 256-token continuations)
+
+| model | fp16 non-finite log-probs | fp16 b1 vs b8 | fp16 vs bf16 at b1 | max abs hidden state (fp16 max 65,504) |
+|---|---|---|---|---|
+| Qwen2.5-3B | 0.000% | 0.05% | 3.39% | 3356 |
+| Qwen2.5-7B | 0.000% | 0.00% | 3.64% | 12712 |
