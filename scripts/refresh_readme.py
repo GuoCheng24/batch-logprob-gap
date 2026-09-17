@@ -24,15 +24,20 @@ lowest = sizes[0]; largest = max(rows, key=params_b)
 assert params_b("pythia-410m") == 0.41 and params_b("Qwen2.5-7B-Instruct") == 7.0 and params_b("Agents-A1-4B") == 4.0
 
 p = R / "README.md"; s = p.read_text()
-def sub(old, new):
+def sub(pattern, new):
+    """Regex anchor so the script is idempotent: it matches both the original wording and
+    its own previous output, and refuses to run if the anchor is not exactly once."""
     global s
-    assert s.count(old) == 1, f"anchor not unique/found: {old[:60]!r}"
-    s = s.replace(old, new)
+    s, k = re.subn(pattern, new, s, flags=re.S)
+    assert k == 1, f"anchor matched {k} times: {pattern[:60]!r}"
 
-sub("On four architectures the resulting", f"Across {len(fams)} architectures and {len(rows)} models the resulting")
-sub("for **1.8% to 36.9%** of tokens", f"for **{lo:.1f}% to {hi:.1f}%** of tokens")
-sub("4096 tokens per\ncell.", f"{nmin:,} to {nmax:,} tokens per\ncell.")
-old84 = re.search(r"- \*\*Small models\.\*\*.*?cannot say\.", s, re.S).group(0)
+sub(r"(On four architectures|Across \d+ architectures and \d+ models) the resulting",
+    f"Across {len(fams)} architectures and {len(rows)} models the resulting")
+sub(r"for \*\*[\d.]+% to [\d.]+%\*\* of tokens", f"for **{lo:.1f}% to {hi:.1f}%** of tokens")
+sub(r"[\d,]+(?: to [\d,]+)? tokens per\ncell\.", f"{nmin:,} to {nmax:,} tokens per\ncell.")
+m84 = re.search(r"- \*\*Small models\.\*\*.*?(?=\n- \*\*|\n\n)", s, re.S)
+assert m84, "Small-models paragraph not found"
+old84 = m84.group(0)
 new84 = (f"- **Small models.** The largest here is {largest.replace('-Instruct','')}; the production report "
          f"was a 30B MoE. Within the Qwen2.5 family the rate drifts from "
          + ", ".join(f"{rows[m][0]:.1f}%" for m in ["Qwen2.5-0.5B-Instruct","Qwen2.5-1.5B-Instruct","Qwen2.5-3B-Instruct","Qwen2.5-7B-Instruct"] if m in rows)

@@ -57,6 +57,7 @@ All six tables are regenerated from `results/*.json` by `scripts/build_tables.py
 | Agents-A1-4B | 1.78% | 0.00% | 0.00% | 0.00% | 1.64% |
 | Qwen2.5-1.5B | 9.37% | 0.00% | 0.00% | 0.00% | 8.87% |
 | Qwen2.5-3B | 6.87% | 0.00% | 0.00% | 0.00% | 7.17% |
+| Qwen2.5-7B | 5.60% | 0.00% | 0.00% | 0.00% | 5.71% |
 <!-- /T1 -->
 
 Percentage of scored tokens whose importance ratio falls outside `[0.9, 1.1]`, 3,518 to 4,096 tokens per
