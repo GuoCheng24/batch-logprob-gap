@@ -1,0 +1,56 @@
+{
+ "model": "Qwen/Qwen2.5-1.5B-Instruct",
+ "arms": {
+  "top_p=0.8, top_k=1024": {
+   "n_tokens": 2048,
+   "mean_kept_mass": 0.8954184394387994,
+   "mean_kept_size": null,
+   "ratio_full_vocab": {
+    "mean": 0.8963233232498169,
+    "median": 0.8945919275283813,
+    "oob": 51.806640625
+   },
+   "ratio_kept_set": {
+    "mean": 1.000981092453003,
+    "median": 1.0,
+    "oob": 4.345703125
+   },
+   "abs_dlogp_full": 0.11531083285808563,
+   "abs_dlogp_kept": 0.01863921247422695
+  },
+  "top_k=20": {
+   "n_tokens": 2048,
+   "mean_kept_mass": 0.9647745817346731,
+   "mean_kept_size": null,
+   "ratio_full_vocab": {
+    "mean": 0.964775800704956,
+    "median": 0.9950349926948547,
+    "oob": 16.162109375
+   },
+   "ratio_kept_set": {
+    "mean": 0.9999839067459106,
+    "median": 1.0000011920928955,
+    "oob": 6.25
+   },
+   "abs_dlogp_full": 0.05483740568161011,
+   "abs_dlogp_kept": 0.027403049170970917
+  },
+  "top_p=1.0, top_k=1024 (control)": {
+   "n_tokens": 2048,
+   "mean_kept_mass": 0.9942535164300352,
+   "mean_kept_size": null,
+   "ratio_full_vocab": {
+    "mean": 0.9946525692939758,
+    "median": 0.999913215637207,
+    "oob": 6.884765625
+   },
+   "ratio_kept_set": {
+    "mean": 1.0004067420959473,
+    "median": 0.9999985694885254,
+    "oob": 5.859375
+   },
+   "abs_dlogp_full": 0.02948027476668358,
+   "abs_dlogp_kept": 0.026287401095032692
+  }
+ }
+}

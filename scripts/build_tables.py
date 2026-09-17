@@ -187,3 +187,18 @@ if runs:
         print(f"| {ARMN.get(a, a)} | {len(rs)} | {m('late'):.3f} | {m('auc'):.3f} | {dv} | {m('clip'):.4f} | {m('dl'):.4f} | {m('spm'):.1f} |")
     print("\nSame seed means the same prompt order and the same vLLM sampling seed, so the arms start as near-replicas and")
     print("only the old-log-prob pass differs; the per-step reward noise is sd 0.14, so a 30-step mean carries an SE of about 0.026.")
+
+
+# ---- the other thing that moves the ratio without a policy change: truncated sampling support ----
+for f in sorted(glob.glob(f"{_RESULTS}/trunc_bias_*.json")):
+    r = json.load(open(f)); tag = r["model"].split("/")[-1]
+    print(f"\n## T11  vLLM importance ratio under truncated sampling: full-vocabulary trainer log-probs vs the same log-probs renormalised over vLLM's replayed support ({SHORT.get(tag, tag)})\n")
+    print("| sampling | tokens | kept mass | ratio, full vocab: mean / median / out-of-band | ratio, kept set: mean / median / out-of-band |")
+    print("|---|---|---|---|---|")
+    for name, a in r["arms"].items():
+        fv, ks = a["ratio_full_vocab"], a["ratio_kept_set"]
+        print(f"| {name} | {a['n_tokens']:,} | {a['mean_kept_mass']:.3f} | {fv['mean']:.3f} / {fv['median']:.3f} / {fv['oob']:.1f}% | {ks['mean']:.3f} / {ks['median']:.3f} / {ks['oob']:.1f}% |")
+    print("\nvLLM 0.28, `logprobs_mode=processed_logprobs`, `return_sampling_mask=True`, temperature 1.0, 64-token continuations of 32 prompts;")
+    print("the trainer side is the HF model in bf16 at batch 1. The full-vocabulary ratio's mean equals the kept mass because the")
+    print("processed log-probs are normalised over the nucleus; renormalising the trainer's log-prob over the replayed kept set removes")
+    print("that term and leaves only the engine-vs-trainer noise floor of the control row.")

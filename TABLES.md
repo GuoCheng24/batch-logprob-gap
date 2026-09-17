@@ -115,6 +115,20 @@ a positive quarter is where the two batch shapes drift apart, a negative one is 
 | C bf16, chunk = micro-batch | 2 | 0.655 | 0.639 | -0.004 / +0.000 | 0.0000 | 0.0113 | 8.9 |
 | D bf16 + guided fp32 layers + head | 2 | 0.651 | 0.647 | +0.001 / -0.013 | 0.0007 | 0.0104 | 10.9 |
 | E bf16 + fp32 head only | 1 | 0.671 | 0.640 | -0.011 | 0.0000 | 0.0102 | 9.0 |
+| F fp16 clone | 1 | 0.690 | 0.650 | +0.008 | 0.0005 | 0.0093 | 8.6 |
 
 Same seed means the same prompt order and the same vLLM sampling seed, so the arms start as near-replicas and
 only the old-log-prob pass differs; the per-step reward noise is sd 0.14, so a 30-step mean carries an SE of about 0.026.
+
+## T11  vLLM importance ratio under truncated sampling: full-vocabulary trainer log-probs vs the same log-probs renormalised over vLLM's replayed support (Qwen2.5-1.5B)
+
+| sampling | tokens | kept mass | ratio, full vocab: mean / median / out-of-band | ratio, kept set: mean / median / out-of-band |
+|---|---|---|---|---|
+| top_p=0.8, top_k=1024 | 2,048 | 0.895 | 0.896 / 0.895 / 51.8% | 1.001 / 1.000 / 4.3% |
+| top_k=20 | 2,048 | 0.965 | 0.965 / 0.995 / 16.2% | 1.000 / 1.000 / 6.2% |
+| top_p=1.0, top_k=1024 (control) | 2,048 | 0.994 | 0.995 / 1.000 / 6.9% | 1.000 / 1.000 / 5.9% |
+
+vLLM 0.28, `logprobs_mode=processed_logprobs`, `return_sampling_mask=True`, temperature 1.0, 64-token continuations of 32 prompts;
+the trainer side is the HF model in bf16 at batch 1. The full-vocabulary ratio's mean equals the kept mass because the
+processed log-probs are normalised over the nucleus; renormalising the trainer's log-prob over the replayed kept set removes
+that term and leaves only the engine-vs-trainer noise floor of the control row.
