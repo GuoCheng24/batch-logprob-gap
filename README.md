@@ -126,6 +126,18 @@ is the only place they still add anything. The ladder stays here as the measurem
 loses batch invariance; the prescription it supports is the one sail-sg published for the whole
 training loop ([arXiv 2510.26788](https://arxiv.org/abs/2510.26788)), applied to the scoring pass.
 
+### The other term in the ratio: truncated sampling
+
+The batch-shape noise is not the only thing that moves the importance ratio without a policy change. When
+vLLM samples with `top_p`, `top_k` or `min_p`, the log probabilities it returns (`processed_logprobs`, which
+is what TRL asks for) are normalised over the tokens that survived the truncation, while the trainer
+normalises over the full vocabulary. The ratio then carries a factor equal to the kept probability mass:
+at `top_p=0.8` on Qwen2.5-1.5B-Instruct it averages 0.896 for an unchanged policy and leaves `[0.9, 1.1]`
+for 51.8% of tokens (T11 in [TABLES.md](TABLES.md)). vLLM 0.28 can return the kept token ids of every
+generated token; renormalising the trainer's log probability over that set brings the ratio to 1.001 and
+the out-of-band rate to 4.3%, the same floor as the untruncated control. `scripts/trunc_bias.py` is the
+measurement; the trainer-side fix is a TRL change, not a change to this harness.
+
 ### Does it reach the reward
 
 Five ways of computing the old log-probabilities in TRL's GRPO, run on the same seed so that the
@@ -143,6 +155,7 @@ lr 2e-6, one optimisation step per generation, 150 steps.
 | C bf16, chunk = micro-batch | 2 | 0.655 | 0.639 | -0.004 / +0.000 | 0.0000 | 0.0113 | 8.9 |
 | D bf16 + guided fp32 layers + head | 2 | 0.651 | 0.647 | +0.001 / -0.013 | 0.0007 | 0.0104 | 10.9 |
 | E bf16 + fp32 head only | 1 | 0.671 | 0.640 | -0.011 | 0.0000 | 0.0102 | 9.0 |
+| F fp16 clone | 1 | 0.690 | 0.650 | +0.008 | 0.0005 | 0.0093 | 8.6 |
 <!-- /T10 -->
 
 None of them separates from the default. The last-30-step reward sits within -0.011 to +0.004 of
