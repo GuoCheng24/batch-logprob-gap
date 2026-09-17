@@ -1,0 +1,359 @@
+{
+ "model": "Qwen/Qwen2.5-1.5B-Instruct",
+ "n_tokens": 6144,
+ "delta": [
+  0.006569826975464821,
+  0.0009626974351704121,
+  0.0008146786130964756,
+  0.0007199421525001526,
+  0.0006150621920824051,
+  0.0003300029784440994,
+  -3.105960786342621e-05,
+  0.00018981192260980606,
+  0.00037562381476163864,
+  0.00045629311352968216,
+  3.638956695795059e-05,
+  -3.6765821278095245e-05,
+  0.00016901642084121704,
+  0.00025314372032880783,
+  0.00031878426671028137,
+  -0.0003229482099413872,
+  0.000351492315530777,
+  9.295810014009476e-05,
+  -9.218323975801468e-05,
+  -0.00018100440502166748,
+  0.00022230762988328934,
+  -0.00047475192695856094,
+  -0.000109158456325531,
+  -0.00020020361989736557,
+  -0.00022767670452594757,
+  5.0533562898635864e-05,
+  -0.00037356000393629074,
+  0.002165808342397213
+ ],
+ "arms": [
+  {
+   "name": "baseline bf16",
+   "layers": [],
+   "norm_head": false,
+   "fp32_frac": 0.0,
+   "oob": 8.04036483168602,
+   "base_dtype": "bfloat16"
+  },
+  {
+   "name": "head only (ScaleRL)",
+   "layers": [],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "last 4 + head",
+   "layers": [
+    24,
+    25,
+    26,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "last 8 + head",
+   "layers": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "last 12 + head",
+   "layers": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "first 12 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "first 4 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "first 8 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true
+  },
+  {
+   "name": "guided top4 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true,
+   "delta_rank": [
+    0,
+    27,
+    1,
+    2
+   ]
+  },
+  {
+   "name": "guided top8 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    8,
+    9,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true,
+   "delta_rank": [
+    0,
+    27,
+    1,
+    2,
+    3,
+    4,
+    9,
+    8
+   ]
+  },
+  {
+   "name": "guided top12 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    8,
+    9,
+    13,
+    14,
+    16,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true,
+   "delta_rank": [
+    0,
+    27,
+    1,
+    2,
+    3,
+    4,
+    9,
+    8,
+    16,
+    5,
+    14,
+    13
+   ]
+  },
+  {
+   "name": "guided window4 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true,
+   "window_start": 0
+  },
+  {
+   "name": "guided window8 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true,
+   "window_start": 0
+  },
+  {
+   "name": "guided window12 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "norm_head": true,
+   "fp32_frac": NaN,
+   "oob": NaN,
+   "skipped": true,
+   "window_start": 0
+  },
+  {
+   "name": "fp16 all (no fp32)",
+   "layers": [],
+   "norm_head": false,
+   "fp32_frac": 0.0,
+   "oob": 0.0,
+   "base_dtype": "float16"
+  },
+  {
+   "name": "fp16 + head",
+   "layers": [],
+   "norm_head": true,
+   "fp32_frac": 0.13132452191450283,
+   "oob": 0.0,
+   "base_dtype": "float16"
+  },
+  {
+   "name": "fp16 + guided top8 + head",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    8,
+    9,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": 0.3419964706306047,
+   "oob": 0.0,
+   "base_dtype": "float16"
+  },
+  {
+   "name": "all layers + head (sanity)",
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27
+   ],
+   "norm_head": true,
+   "fp32_frac": 0.8686763424208593,
+   "oob": 0.0,
+   "base_dtype": "bfloat16"
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "Qwen/Qwen2.5-3B-Instruct": {
+  "n_tokens": 8192,
+  "fp16_nonfinite": 0.0,
+  "fp16_b1_vs_b8_oob": 0.048828125,
+  "fp16_b1_vs_bf16_b1_oob": 3.3935546875,
+  "max_abs_hidden_fp16": 3356.0,
+  "n_layers_hidden_over_60000": 0
+ },
+ "Qwen/Qwen2.5-7B-Instruct": {
+  "n_tokens": 8192,
+  "fp16_nonfinite": 0.0,
+  "fp16_b1_vs_b8_oob": 0.0,
+  "fp16_b1_vs_bf16_b1_oob": 3.6376953125,
+  "max_abs_hidden_fp16": 12712.0,
+  "n_layers_hidden_over_60000": 0
+ }
+}
