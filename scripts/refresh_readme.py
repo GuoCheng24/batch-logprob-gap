@@ -52,7 +52,7 @@ def section(tag):
     m = re.search(rf"## {tag} .*?\n\n(\|.*?)(?=\n\n|\Z)", tb, re.S)
     assert m, f"section {tag} missing in TABLES.md"
     return m.group(1).strip()
-for tag in ("T1", "T2"):
+for tag in ("T1", "T2", "T7", "T10"):
     a, b = f"<!-- {tag} -->", f"<!-- /{tag} -->"
     assert s.count(a) == 1 and s.count(b) == 1, f"README lacks {tag} markers"
     s = s[:s.index(a) + len(a)] + "\n" + section(tag) + "\n" + s[s.index(b):]

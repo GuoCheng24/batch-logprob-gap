@@ -39,6 +39,11 @@ Yes, and specifically:
 - it survives **eager**, **sdpa** and **flex_attention**, so it is not one kernel's artefact;
 - and it reaches the objective: the fraction of tokens that PPO clipping *excludes* barely
   moves, but **which** tokens are excluded moves by 1.7% to 10.1%.
+- it enters **where the architecture puts it**: in the last third of the stack for GPT-NeoX and in
+  the first five layers for Qwen2 and Qwen3, so an fp32 `lm_head` removes most of it on Qwen and
+  almost none of it on pythia;
+- **scoring in fp16 removes it** on every Qwen-family model here at bf16 cost, and fp16 does not
+  overflow on Qwen2.5 up to 7B.
 
 ## Tables
 
@@ -80,6 +85,53 @@ dense model and **12.60% for the MoE**, which matches the report in verl#6280 th
 appeared on Qwen3.5-35B-A3B and not on dense models: expert routing depends on batch
 composition, so MoE has a second channel the dense models do not.
 
+### Where it enters, and what precision buys
+
+<!-- T7 -->
+| model | bf16 | fp32 head only | last 8 + head | first 8 + head | guided 8 + head | fp16, no fp32 | fp16 + guided 8 | all fp32 (sanity) |
+|---|---|---|---|---|---|---|---|---|
+| DeepSeek-R1-Distill-Qwen-1.5B | 6.38% (0%) | 1.94% (13%) | 1.33% (34%) | 0.60% (34%) | 0.68% (34%) | 0.00% (0%) | 0.00% (34%) | 0.00% (87%) |
+| Qwen2.5-0.5B | 8.92% (0%) | 2.72% (22%) | 1.30% (41%) | 0.81% (41%) | 0.86% (41%) | 0.02% (0%) | 0.00% (41%) | 0.00% (78%) |
+| Qwen2.5-1.5B | 8.04% (0%) | 1.51% (13%) | 0.94% (34%) | 1.07% (34%) | 0.93% (34%) | 0.00% (0%) | 0.00% (34%) | 0.00% (87%) |
+| Qwen3-1.7B | 5.58% (0%) | 1.99% (15%) | 1.42% (35%) | 1.04% (35%) | 1.06% (35%) | 0.00% (0%) | 0.00% (35%) | 0.00% (85%) |
+| pythia-410m (NeoX 0.41B) | 34.26% (0%) | 32.24% (13%) | 1.12% (38%) | 32.31% (38%) | 0.41% (38%) | 0.47% (0%) | 0.00% (38%) | 0.00% (87%) |
+<!-- /T7 -->
+
+Out-of-band rate at batch 1 vs 8 on 6,144 tokens, with the share of parameters held in fp32 in
+parentheses; `guided 8` is the eight decoder layers with the largest batch-1-vs-batch-8 divergence
+increment, chosen on a separate 1,536-token pass (T8 in [TABLES.md](TABLES.md)).
+
+The divergence between the two batch shapes can be followed layer by layer, and it is not the head.
+On pythia-410m an fp32 `lm_head` leaves the rate at 32.24% (from 34.26%) because the residual stream
+has already drifted apart in the last third of the stack: the last quarter of the layers contributes
++9.0e-2 of the 0.115 total. The Qwen2 and Qwen3 models are the mirror image. Their first five layers
+inject almost all of it (+1.0e-2 to +1.1e-2 in the first quarter), the middle of the stack carries it
+unchanged, and an fp32 head removes two thirds to four fifths of the out-of-band tokens there.
+
+That profile says which layers are worth upcasting. Holding the eight layers with the largest
+increment in fp32, plus the head, costs 34% to 41% of the parameters and reaches 0.41% on pythia and
+0.68% to 1.06% on the Qwen models; the same budget spent on the *last* eight layers gives 1.12% and
+0.94% to 1.42%, spent on the *first* eight gives 32.31% and 0.60% to 1.07%. The profile picks the
+right end of the network without being told which family it is looking at.
+
+It is still the wrong fix. Scoring the same tokens in fp16, with no fp32 anywhere, gives 0.00% on
+three of the four Qwen-family models, 0.02% on Qwen2.5-0.5B and 0.47% on pythia-410m; on Qwen2.5-3B
+and 7B fp16 produces no non-finite log probability, and the largest hidden-state magnitude it meets
+is 12,712 against a ceiling of 65,504 (T9). Under fp16 the guided layers bring pythia to 0.00%, which
+is the only place they still add anything. The ladder stays here as the measurement of *where* bf16
+loses batch invariance; the prescription it supports is the one sail-sg published for the whole
+training loop ([arXiv 2510.26788](https://arxiv.org/abs/2510.26788)), applied to the scoring pass.
+
+### Does it reach the reward
+
+<!-- T10 -->
+| arm | seeds | reward, last 30 steps | reward, mean over 150 | vs A, same seed | clip fraction | vLLM-vs-old abs dlogp | s/step |
+|---|---|---|---|---|---|---|---|
+| A default (bf16, trainer chunking) | 1 | 0.682 | 0.637 | - | 0.0000 | 0.0110 | 10.4 |
+| B fp32 clone | 1 | 0.686 | 0.637 | +0.004 | 0.0005 | 0.0089 | 13.2 |
+| C bf16, chunk = micro-batch | 1 | 0.678 | 0.639 | -0.004 | 0.0000 | 0.0110 | 9.7 |
+<!-- /T10 -->
+
 ## What this harness cannot tell you
 
 - **It is not verl's production path.** verl runs FSDP2 with static batching and
@@ -114,6 +166,10 @@ python scripts/pad_control.py EleutherAI/pythia-410m  # T2: padding / size / mem
 python scripts/dtype_paths.py EleutherAI/pythia-410m  # T3: three path changes, bf16 vs fp32
 python scripts/robust.py    EleutherAI/pythia-410m    # T4, T6: implementations, seeds, advantages
 python scripts/grpo_effect.py EleutherAI/pythia-410m  # T5: clip-status flips
+python scripts/attribution.py EleutherAI/pythia-410m  # T8: per-layer divergence, fp32-head ablation
+NREP=4 python scripts/selective_fp32.py EleutherAI/pythia-410m  # T7: precision ladder (needs T8 first)
+python scripts/fp16_check.py Qwen/Qwen2.5-3B-Instruct  # T9: fp16 overflow check
+python scripts/q1_grpo.py --arm A --seed 0             # T10: one GRPO arm (TRL + vLLM; arms B-F use a second GPU)
 python scripts/build_tables.py                        # rebuild TABLES.md from results/
 ```
 
