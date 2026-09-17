@@ -44,6 +44,9 @@ Yes, and specifically:
   almost none of it on pythia;
 - **scoring in fp16 removes it** on every Qwen-family model here at bf16 cost, and fp16 does not
   overflow on Qwen2.5 up to 7B.
+- and at 1.5B on GSM8K it does **not** reach the reward: five ways of computing the old
+  log-probabilities, same seed, finish within -0.011 to +0.004 of each other after 150 steps, with
+  the clip fraction at zero throughout.
 
 ## Tables
 
@@ -125,13 +128,31 @@ training loop ([arXiv 2510.26788](https://arxiv.org/abs/2510.26788)), applied to
 
 ### Does it reach the reward
 
+Five ways of computing the old log-probabilities in TRL's GRPO, run on the same seed so that the
+arms share prompt order and vLLM sampling and differ only in that one pass: the trainer's own bf16
+pass (A), an fp32 copy of the policy (B), bf16 with the chunk size forced to the training
+micro-batch (C), bf16 with the divergence-guided layers and the head in fp32 (D), and bf16 with
+only the fp32 head (E). Qwen2.5-1.5B-Instruct on GSM8K, 4 prompts x 8 completions per step,
+lr 2e-6, one optimisation step per generation, 150 steps.
+
 <!-- T10 -->
 | arm | seeds | reward, last 30 steps | reward, mean over 150 | vs A, same seed | clip fraction | vLLM-vs-old abs dlogp | s/step |
 |---|---|---|---|---|---|---|---|
 | A default (bf16, trainer chunking) | 1 | 0.682 | 0.637 | - | 0.0000 | 0.0110 | 10.4 |
 | B fp32 clone | 1 | 0.686 | 0.637 | +0.004 | 0.0005 | 0.0089 | 13.2 |
 | C bf16, chunk = micro-batch | 1 | 0.678 | 0.639 | -0.004 | 0.0000 | 0.0110 | 9.7 |
+| D bf16 + guided fp32 layers + head | 1 | 0.683 | 0.651 | +0.001 | 0.0007 | 0.0102 | 12.5 |
+| E bf16 + fp32 head only | 1 | 0.671 | 0.640 | -0.011 | 0.0000 | 0.0102 | 9.0 |
 <!-- /T10 -->
+
+None of them separates from the default. The last-30-step reward sits within -0.011 to +0.004 of
+arm A and the 150-step mean within +0.001 to +0.015, against a per-step noise of sd 0.14 (SE 0.026
+on a 30-step mean); the clip fraction is 0.0000 to 0.0005 in every arm, because at one optimisation
+step per generation the ratio is 1 up to exactly this noise, and the noise never reaches the 0.2
+clip band. The batch-shape noise is real and it is in the ratio; at this scale and these defaults
+it does not move the reward. That is the bound this harness can put on it: a few points at most,
+with no consistent sign, on one seed. A second seed and an fp16 arm are running and enter T10 as
+they finish.
 
 ## What this harness cannot tell you
 
