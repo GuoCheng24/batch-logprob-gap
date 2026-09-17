@@ -74,6 +74,18 @@
 Out-of-band rate, with the fraction of parameters held in fp32 in parentheses. 'guided 8' = the eight
 decoder layers with the largest per-layer divergence increment (T8), chosen on a separate 1,536-token calibration pass.
 
+## T7b  what each rung costs: teacher-forced scoring time relative to bf16, batch 8 x 512 tokens
+
+| model | bf16 | fp16 | fp32 head | last 8 + head | guided 8 + head | all fp32 | peak GiB bf16 -> all fp32 |
+|---|---|---|---|---|---|---|---|
+| Qwen2.5-0.5B | x1.00 | x0.93 | x1.49 | x2.05 | x2.02 | x3.19 | 7.9 -> 9.1 |
+| Qwen2.5-1.5B | x1.00 | x0.96 | x1.38 | x1.98 | x1.94 | x3.36 | 9.8 -> 13.2 |
+| Qwen3-1.7B | x1.00 | x0.95 | x1.35 | x1.93 | x1.91 | x3.28 | 10.2 -> 14.0 |
+| pythia-410m (NeoX 0.41B) | x1.00 | x0.99 | x1.19 | x1.71 | x1.70 | x2.81 | 3.1 -> 3.7 |
+
+Wall time of the scoring forward including the fp32 log-softmax, 10 timed passes after 3 warm-up passes, on one RTX 4090
+shared with another user's process at 30-40% utilisation; the ratios, not the absolute rates, are the measurement.
+
 ## T8  where the divergence enters: b1-vs-b8 relative hidden-state divergence, by quarter of the stack
 
 | model | layers | Q1 | Q2 | Q3 | Q4 | after last layer | top-4 layers by increment |

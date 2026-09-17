@@ -114,7 +114,8 @@ increment in fp32, plus the head, costs 34% to 41% of the parameters and reaches
 0.94% to 1.42%, spent on the *first* eight gives 32.31% and 0.60% to 1.07%. The profile picks the
 right end of the network without being told which family it is looking at.
 
-It is still the wrong fix. Scoring the same tokens in fp16, with no fp32 anywhere, gives 0.00% on
+It is still the wrong fix. Scoring the same tokens in fp16, with no fp32 anywhere and at 0.93x to
+0.99x the bf16 time (T7b; the guided layers cost 1.7x to 2.0x, all-fp32 2.8x to 3.4x), gives 0.00% on
 three of the four Qwen-family models, 0.02% on Qwen2.5-0.5B and 0.47% on pythia-410m; on Qwen2.5-3B
 and 7B fp16 produces no non-finite log probability, and the largest hidden-state magnitude it meets
 is 12,712 against a ceiling of 65,504 (T9). Under fp16 the guided layers bring pythia to 0.00%, which

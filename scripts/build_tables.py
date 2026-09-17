@@ -125,6 +125,20 @@ for tag in tags:
 print("\nOut-of-band rate, with the fraction of parameters held in fp32 in parentheses. 'guided 8' = the eight")
 print("decoder layers with the largest per-layer divergence increment (T8), chosen on a separate 1,536-token calibration pass.")
 
+bf = sorted(glob.glob(f"{_RESULTS}/selbench_*.json"))
+if bf:
+    print("\n## T7b  what each rung costs: teacher-forced scoring time relative to bf16, batch 8 x 512 tokens\n")
+    names = ["base", "fp16", "head", "last8", "guided8", "full"]
+    print("| model | " + " | ".join({"base": "bf16", "fp16": "fp16", "head": "fp32 head", "last8": "last 8 + head", "guided8": "guided 8 + head", "full": "all fp32"}[n] for n in names) + " | peak GiB bf16 -> all fp32 |")
+    print("|---|" + "---|" * len(names) + "---|")
+    for f in bf:
+        r = json.load(open(f)); c = {x["name"]: x for x in r["configs"]}
+        tag = r["model"].split("/")[-1]
+        cells = [f"x{c[n]['rel_time']:.2f}" if n in c else "-" for n in names]
+        print(f"| {SHORT.get(tag, tag)} | " + " | ".join(cells) + f" | {c['base']['peak_gib']:.1f} -> {c['full']['peak_gib']:.1f} |")
+    print("\nWall time of the scoring forward including the fp32 log-softmax, 10 timed passes after 3 warm-up passes, on one RTX 4090")
+    print("shared with another user's process at 30-40% utilisation; the ratios, not the absolute rates, are the measurement.")
+
 print("\n## T8  where the divergence enters: b1-vs-b8 relative hidden-state divergence, by quarter of the stack\n")
 print("| model | layers | Q1 | Q2 | Q3 | Q4 | after last layer | top-4 layers by increment |")
 print("|---|---|---|---|---|---|---|---|")
