@@ -1,0 +1,23 @@
+{
+ "model": "ibm-granite/granite-3.1-1b-a400m-instruct",
+ "results": {
+  "padded b1 vs b8": {
+   "sd": 0.07990383035262506,
+   "max": 1.629526138305664,
+   "out": 582,
+   "n": 4096
+  },
+  "packed x1 vs x8": {
+   "sd": 3.2201867761159653,
+   "max": 17.457833640277386,
+   "out": 3496,
+   "n": 4096
+  },
+  "padded1 vs packed1": {
+   "sd": 0.0,
+   "max": 0.0,
+   "out": 0,
+   "n": 4096
+  }
+ }
+}

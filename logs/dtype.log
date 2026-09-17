@@ -1,0 +1,19 @@
+### EleutherAI/pythia-410m  32 seqs x 54 tok, 1536 scored
+  [bf16]
+    batch  [1,L] vs [8,L]              sd 0.1517734  max 1.6115477  out  489/1536 (31.84%)
+    mask   implicit vs explicit 4D     sd 0.1195441  max 1.0095448  out  328/1536 (21.35%)
+    pack   1/row vs 8/row (both 4D)    sd 0.1513203  max 0.8983641  out  495/1536 (32.23%)
+  [fp32]
+    batch  [1,L] vs [8,L]              sd 0.0000455  max 0.0005252  out    0/1536 ( 0.00%)
+    mask   implicit vs explicit 4D     sd 0.0000000  max 0.0000000  out    0/1536 ( 0.00%)
+    pack   1/row vs 8/row (both 4D)    sd 0.0000452  max 0.0005252  out    0/1536 ( 0.00%)
+### Qwen/Qwen2.5-0.5B-Instruct  32 seqs x 54 tok, 1536 scored
+  [bf16]
+    batch  [1,L] vs [8,L]              sd 0.0527446  max 0.3398936  out  141/1536 ( 9.18%)
+    mask   implicit vs explicit 4D     sd 0.0391473  max 0.2074201  out   74/1536 ( 4.82%)
+    pack   1/row vs 8/row (both 4D)    sd 0.0528616  max 0.3158355  out  145/1536 ( 9.44%)
+  [fp32]
+    batch  [1,L] vs [8,L]              sd 0.0000066  max 0.0000334  out    0/1536 ( 0.00%)
+    mask   implicit vs explicit 4D     sd 0.0000077  max 0.0000470  out    0/1536 ( 0.00%)
+    pack   1/row vs 8/row (both 4D)    sd 0.0000071  max 0.0000372  out    0/1536 ( 0.00%)
+ALLDONE

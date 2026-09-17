@@ -1,0 +1,9 @@
+{
+ "model": "ibm-granite/granite-3.1-1b-a400m-instruct",
+ "n": 4096,
+ "flips": 114,
+ "clip_b1": 129,
+ "clip_b8": 117,
+ "rel_median": 0.011337961489693918,
+ "rel_p95": 0.14219868865300336
+}

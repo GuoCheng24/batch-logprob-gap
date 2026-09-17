@@ -1,0 +1,16 @@
+### EleutherAI/pythia-410m   8 prompts x 8 samples, 64 tokens each = 4096 tokens
+  ratio at first inner epoch should be 1.0 for every token
+  clipped (no gradient) : batch1 818/4096 (19.97%)   batch8 822/4096 (20.07%)
+  clip status FLIPS between batch 1 and batch 8 : 414/4096 (10.11%)
+  where both contribute, |dcoef|/coef : median 0.05492  p95 0.28276  max 5.59478
+### Qwen/Qwen2.5-0.5B-Instruct   8 prompts x 8 samples, 64 tokens each = 4096 tokens
+  ratio at first inner epoch should be 1.0 for every token
+  clipped (no gradient) : batch1 877/4096 (21.41%)   batch8 880/4096 (21.48%)
+  clip status FLIPS between batch 1 and batch 8 : 69/4096 (1.68%)
+  where both contribute, |dcoef|/coef : median 0.01106  p95 0.11251  max 0.27711
+### ibm-granite/granite-3.1-1b-a400m-instruct   8 prompts x 8 samples, 64 tokens each = 4096 tokens
+  ratio at first inner epoch should be 1.0 for every token
+  clipped (no gradient) : batch1 129/4096 (3.15%)   batch8 117/4096 (2.86%)
+  clip status FLIPS between batch 1 and batch 8 : 114/4096 (2.78%)
+  where both contribute, |dcoef|/coef : median 0.01134  p95 0.14220  max 0.73647
+ALLDONE

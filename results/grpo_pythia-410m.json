@@ -1,0 +1,9 @@
+{
+ "model": "EleutherAI/pythia-410m",
+ "n": 4096,
+ "flips": 414,
+ "clip_b1": 818,
+ "clip_b8": 822,
+ "rel_median": 0.054924982640502454,
+ "rel_p95": 0.2827610876145499
+}

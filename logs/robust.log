@@ -1,0 +1,19 @@
+### EleutherAI/pythia-410m
+  [out-of-band rate for batch 1 vs 8, by attention implementation and seed]
+    eager             53.91%  95%CI [52.46, 55.34]  per-seed ['53.71', '54.30', '53.71']  n=4608
+    sdpa              32.92%  95%CI [31.58, 34.29]  per-seed ['31.84', '32.62', '34.31']  n=4608
+    flex_attention    33.29%  95%CI [31.94, 34.66]  per-seed ['33.40', '31.58', '34.90']  n=4608
+  [clip-status flips, by advantage distribution]
+    gaussian             8.59%  95%CI [ 7.29, 10.10]  n=1536
+    binary +/-1          7.03%  95%CI [ 5.86,  8.42]  n=1536
+    sparse (90% zero)    2.47%  95%CI [ 1.81,  3.38]  n=1536
+### Qwen/Qwen2.5-0.5B-Instruct
+  [out-of-band rate for batch 1 vs 8, by attention implementation and seed]
+    eager             15.13%  95%CI [14.12, 16.19]  per-seed ['14.13', '15.23', '16.02']  n=4608
+    sdpa               9.29%  95%CI [ 8.48, 10.16]  per-seed ['9.18', '9.96', '8.72']  n=4608
+    flex_attention     9.18%  95%CI [ 8.38, 10.05]  per-seed ['10.03', '9.31', '8.20']  n=4608
+  [clip-status flips, by advantage distribution]
+    gaussian             2.02%  95%CI [ 1.43,  2.85]  n=1536
+    binary +/-1          2.02%  95%CI [ 1.43,  2.85]  n=1536
+    sparse (90% zero)    0.52%  95%CI [ 0.26,  1.02]  n=1536
+ALLDONE

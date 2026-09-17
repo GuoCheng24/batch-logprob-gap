@@ -1,0 +1,19 @@
+### EleutherAI/pythia-410m   64 seqs x (prompt 6 + gen 64) = 4096 scored tokens
+  P1 padded  [1,L] vs [8,L]                      sd 0.176312  max 2.094845  out 1484/4096 (36.23%)
+  P2 packed  1 seq/row vs 8 seqs/row             sd 0.169532  max 1.998470  out 1471/4096 (35.91%)
+     sanity: padded [1,L] vs packed 1/row        sd 0.138217  max 1.889140  out 1065/4096 (26.00%)
+Traceback (most recent call last):
+AssertionError: packing path itself is wrong: max diff 1.8891401290893555
+### Qwen/Qwen2.5-0.5B-Instruct   64 seqs x (prompt 5 + gen 64) = 4096 scored tokens
+  P1 padded  [1,L] vs [8,L]                      sd 0.077488  max 1.557886  out  412/4096 (10.06%)
+  P2 packed  1 seq/row vs 8 seqs/row             sd 0.084815  max 2.374836  out  391/4096 ( 9.55%)
+     sanity: padded [1,L] vs packed 1/row        sd 0.056621  max 0.992849  out  278/4096 ( 6.79%)
+Traceback (most recent call last):
+AssertionError: packing path itself is wrong: max diff 0.9928488731384277
+### ibm-granite/granite-3.1-1b-a400m-instruct   64 seqs x (prompt 6 + gen 64) = 4096 scored tokens
+  P1 padded  [1,L] vs [8,L]                      sd 0.079904  max 1.629526  out  582/4096 (14.21%)
+  P2 packed  1 seq/row vs 8 seqs/row             sd 0.082031  max 2.018250  out  546/4096 (13.33%)
+     sanity: padded [1,L] vs packed 1/row        sd 0.061162  max 0.546129  out  407/4096 ( 9.94%)
+Traceback (most recent call last):
+AssertionError: packing path itself is wrong: max diff 0.5461292266845703
+ALLDONE

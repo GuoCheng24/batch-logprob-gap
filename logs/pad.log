@@ -1,0 +1,19 @@
+### EleutherAI/pythia-410m  equal-length arms: prompt 6 + gen 1 = 7 tokens x 64 seqs = 64 scored
+  A  padded ragged:   batch 1 vs 8                     sd 0.170790  p95 0.34419  max 1.83838  out 1457/3970 (36.70%)
+  B  equal len, no pad: batch 1 vs 8                   sd 0.119953  p95 0.30103  max 0.44881  out   15/64 (23.44%)
+  B' equal len, no pad: batch 1 vs 32                  sd 0.127536  p95 0.29569  max 0.63698  out   15/64 (23.44%)
+  C  same sequence x8 in a batch vs alone              sd 0.000000  p95 0.04178  max 0.04178  out    0/1 ( 0.00%)
+  D  batch 8, two different groupings                  sd 0.000000  p95 0.00000  max 0.00000  out    0/64 ( 0.00%)
+### Qwen/Qwen2.5-0.5B-Instruct  equal-length arms: prompt 5 + gen 56 = 61 tokens x 64 seqs = 3584 scored
+  A  padded ragged:   batch 1 vs 8                     sd 0.060048  p95 0.11878  max 0.71586  out  403/4085 ( 9.87%)
+  B  equal len, no pad: batch 1 vs 8                   sd 0.061842  p95 0.11747  max 0.71286  out  334/3584 ( 9.32%)
+  B' equal len, no pad: batch 1 vs 32                  sd 0.076163  p95 0.11683  max 1.44412  out  320/3584 ( 8.93%)
+  C  same sequence x8 in a batch vs alone              sd 0.037848  p95 0.10121  max 0.11340  out    3/56 ( 5.36%)
+  D  batch 8, two different groupings                  sd 0.000000  p95 0.00000  max 0.00000  out    0/3584 ( 0.00%)
+### ibm-granite/granite-3.1-1b-a400m-instruct  equal-length arms: prompt 6 + gen 1 = 7 tokens x 64 seqs = 64 scored
+  A  padded ragged:   batch 1 vs 8                     sd 0.075523  p95 0.16877  max 0.65283  out  523/3819 (13.69%)
+  B  equal len, no pad: batch 1 vs 8                   sd 0.126152  p95 0.18386  max 0.68989  out   11/64 (17.19%)
+  B' equal len, no pad: batch 1 vs 32                  sd 0.132472  p95 0.23129  max 0.61957  out   13/64 (20.31%)
+  C  same sequence x8 in a batch vs alone              sd 0.000000  p95 0.18644  max 0.18644  out    1/1 (100.00%)
+  D  batch 8, two different groupings                  sd 0.097103  p95 0.18230  max 0.49058  out   11/64 (17.19%)
+ALLDONE

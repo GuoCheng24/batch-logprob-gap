@@ -1,0 +1,25 @@
+### Qwen/Qwen2.5-0.5B-Instruct   64 seqs, 4085 tokens
+  bf16: batch 1 vs 8                   sd 0.060048  p95 0.11878  max 0.71586  out  403/4085 ( 9.87%)
+  bf16: batch 1 run1 vs run2           sd 0.000000  p95 0.00000  max 0.00000  out    0/4085 ( 0.00%)
+  bf16: batch 1 vs 32                  sd 0.065449  p95 0.12047  max 1.04609  out  439/4085 (10.75%)
+  fp16: batch 1 vs 8                   sd 0.008549  p95 0.01550  max 0.13410  out    3/4085 ( 0.07%)
+  fp32: batch 1 vs 8                   sd 0.000010  p95 0.00002  max 0.00015  out    0/4085 ( 0.00%)
+### EleutherAI/pythia-410m   64 seqs, 3970 tokens
+  bf16: batch 1 vs 8                   sd 0.170790  p95 0.34419  max 1.83838  out 1457/3970 (36.70%)
+  bf16: batch 1 run1 vs run2           sd 0.000000  p95 0.00000  max 0.00000  out    0/3970 ( 0.00%)
+  bf16: batch 1 vs 32                  sd 0.164511  p95 0.34031  max 1.80213  out 1455/3970 (36.65%)
+  fp16: batch 1 vs 8                   sd 0.038819  p95 0.07260  max 0.55753  out   99/3970 ( 2.49%)
+  fp32: batch 1 vs 8                   sd 0.000052  p95 0.00010  max 0.00084  out    0/3970 ( 0.00%)
+### ibm-granite/granite-3.1-1b-a400m-instruct   64 seqs, 3819 tokens
+  bf16: batch 1 vs 8                   sd 0.075523  p95 0.16877  max 0.65283  out  523/3819 (13.69%)
+  bf16: batch 1 run1 vs run2           sd 0.000000  p95 0.00000  max 0.00000  out    0/3819 ( 0.00%)
+  bf16: batch 1 vs 32                  sd 0.081105  p95 0.18063  max 0.82290  out  529/3819 (13.85%)
+  fp16: batch 1 vs 8                   sd 0.021665  p95 0.03833  max 0.30770  out   37/3819 ( 0.97%)
+  fp32: batch 1 vs 8                   sd 0.000009  p95 0.00002  max 0.00005  out    0/3819 ( 0.00%)
+### InternScience/Agents-A1-4B   64 seqs, 4096 tokens
+  bf16: batch 1 vs 8                   sd 0.023976  p95 0.05317  max 0.24936  out   73/4096 ( 1.78%)
+  bf16: batch 1 run1 vs run2           sd 0.000000  p95 0.00000  max 0.00000  out    0/4096 ( 0.00%)
+  bf16: batch 1 vs 32                  sd 0.023878  p95 0.05282  max 0.34206  out   67/4096 ( 1.64%)
+  fp16: batch 1 vs 8                   sd 0.003241  p95 0.00719  max 0.03860  out    0/4096 ( 0.00%)
+  fp32: batch 1 vs 8                   sd 0.000004  p95 0.00001  max 0.00005  out    0/4096 ( 0.00%)
+ALLDONE
