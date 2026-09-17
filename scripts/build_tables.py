@@ -146,3 +146,30 @@ if os.path.exists(fc):
     for m, r in json.load(open(fc)).items():
         tag = m.split("/")[-1]
         print(f"| {SHORT.get(tag, tag)} | {100*r['fp16_nonfinite']:.3f}% | {r['fp16_b1_vs_b8_oob']:.2f}% | {r['fp16_b1_vs_bf16_b1_oob']:.2f}% | {r['max_abs_hidden_fp16']:.0f} |")
+
+
+# ---- downstream: the GRPO arms (results/q1/<arm>_s<seed>.json) ----
+ARMN = {"A": "A default (bf16, trainer chunking)", "B": "B fp32 clone", "C": "C bf16, chunk = micro-batch",
+        "D": "D bf16 + guided fp32 layers + head", "E": "E bf16 + fp32 head only", "F": "F fp16 clone"}
+runs = {}
+for f in sorted(glob.glob(f"{_RESULTS}/q1/*_s*.json")):
+    r = json.load(open(f)); h = [x for x in r["log_history"] if "reward" in x]
+    if len(h) < 30: continue
+    rw = [float(x["reward"]) for x in h]; k = 30
+    runs[(r["arm"], r["seed"])] = {"late": sum(rw[-k:]) / k, "auc": sum(rw) / len(rw),
+        "clip": sum(float(x["clip_ratio/region_mean"]) for x in h) / len(h),
+        "dl": sum(float(x["sampling/sampling_logp_difference/mean"]) for x in h) / len(h), "steps": len(h),
+        "spm": r["wall_s"] / len(h)}
+if runs:
+    seeds = sorted({s for _, s in runs}); arms = sorted({a for a, _ in runs})
+    print("\n## T10  does the old-log-prob precision reach the reward: GRPO on GSM8K, Qwen2.5-1.5B-Instruct, 150 steps\n")
+    print("| arm | seeds | reward, last 30 steps | reward, mean over 150 | vs A, same seed | clip fraction | vLLM-vs-old abs dlogp | s/step |")
+    print("|---|---|---|---|---|---|---|---|")
+    for a in arms:
+        rs = [runs[(a, s)] for s in seeds if (a, s) in runs]
+        d = [runs[(a, s)]["late"] - runs[("A", s)]["late"] for s in seeds if (a, s) in runs and ("A", s) in runs]
+        dv = ("-" if a == "A" or not d else " / ".join(f"{x:+.3f}" for x in d))
+        m = lambda key: sum(x[key] for x in rs) / len(rs)
+        print(f"| {ARMN.get(a, a)} | {len(rs)} | {m('late'):.3f} | {m('auc'):.3f} | {dv} | {m('clip'):.4f} | {m('dl'):.4f} | {m('spm'):.1f} |")
+    print("\nSame seed means the same prompt order and the same vLLM sampling seed, so the arms start as near-replicas and")
+    print("only the old-log-prob pass differs; the per-step reward noise is sd 0.14, so a 30-step mean carries an SE of about 0.026.")
