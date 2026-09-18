@@ -1,0 +1,6 @@
+Title: In bfloat16 the batch shape moves the importance ratio: measurement, controls, and what removes it
+Authors: Guo Cheng (University of Chinese Academy of Sciences)
+Primary category: cs.LG   Cross-list: cs.CL
+Comments: 6 pages; code and every result table at https://github.com/GuoCheng24/batch-logprob-gap
+License: CC BY 4.0
+Upload: report.tex (source, compiles with pdflatex/tectonic, no external figures); abstract in abstract.txt
