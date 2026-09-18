@@ -11,7 +11,12 @@ inner epoch that ratio is the identity by construction. Whatever moves it there 
 off-policy correction the algorithm applies to a policy that never changed.
 
 This repository is the measurement, the controls that survived, and the ones that killed my
-own first three explanations. It is not a fix and not a paper.
+own first three explanations.
+
+**Written up as a six-page report: [paper/report.pdf](paper/report.pdf)** — the same measurement
+with every control in one place, assembled by [`paper/build.py`](paper/build.py), which splices the
+tables in from [TABLES.md](TABLES.md) verbatim and refuses to build if a number in its prose does not
+occur in a committed result file.
 
 ## What it is not
 
@@ -50,8 +55,19 @@ Yes, and specifically:
 
 ## Tables
 
-All six tables are regenerated from `results/*.json` by `scripts/build_tables.py`; nothing in
-[TABLES.md](TABLES.md) is typed by hand. Two of them:
+All eleven tables are regenerated from `results/*.json` by `scripts/build_tables.py`; nothing in
+[TABLES.md](TABLES.md) is typed by hand:
+
+| | |
+|---|---|
+| [T1](TABLES.md#t1--dtype-x-batch-no-inference-engine-involved) dtype × batch, no inference engine | [T7](TABLES.md#t7--precision-ladder-where-must-fp32-go-bf16-batch-1-vs-8-6144-tokens) precision ladder: where must fp32 go |
+| [T2](TABLES.md#t2--is-it-padding-batch-size-or-who-shares-the-batch) padding, batch size, or batch membership | [T7b](TABLES.md#t7b--what-each-rung-costs-teacher-forced-scoring-time-relative-to-bf16-batch-8-x-512-tokens) what each rung of that ladder costs |
+| [T3](TABLES.md#t3--three-ways-to-change-the-kernel-path-in-bf16-and-fp32) three ways to change the kernel path | [T8](TABLES.md#t8--where-the-divergence-enters-b1-vs-b8-relative-hidden-state-divergence-by-quarter-of-the-stack) where the divergence enters, layer by layer |
+| [T4](TABLES.md#t4--attention-implementation-and-repeatability-bf16-batch-1-vs-8) attention implementation and repeatability | [T9](TABLES.md#t9--does-fp16-overflow-on-the-larger-models-8192-tokens-256-token-continuations) does fp16 overflow at 3B and 7B |
+| [T5](TABLES.md#t5--does-it-reach-the-gradient-ppo-clip-status-flips) does it reach the gradient: clip-status flips | [T10](TABLES.md#t10--does-the-old-log-prob-precision-reach-the-reward-grpo-on-gsm8k-qwen25-15b-instruct-150-steps) does it reach the reward: six GRPO arms |
+| [T6](TABLES.md#t6--clip-flip-rate-depends-on-the-advantage-distribution) clip flips vs the advantage distribution | [T11](TABLES.md#t11--vllm-importance-ratio-under-truncated-sampling-full-vocabulary-trainer-log-probs-vs-the-same-log-probs-renormalised-over-vllms-replayed-support-qwen25-15b) the truncated-sampling term in the ratio |
+
+Four of them are reproduced below; the report has all eleven with the prose that connects them.
 
 ### The effect is bf16, and it is not randomness
 
@@ -211,6 +227,14 @@ python scripts/build_tables.py                        # rebuild TABLES.md from r
 
 Single GPU, no distributed setup, models under 5B. `pythia-410m` shows the largest effect and
 is the fastest to run.
+
+## Citing it
+
+[CITATION.cff](CITATION.cff) is the machine-readable form; GitHub's "Cite this repository" reads it.
+In text:
+
+> Guo Cheng. *In bfloat16 the batch shape moves the importance ratio: measurement, controls, and what
+> removes it.* Technical report, September 2026. https://github.com/GuoCheng24/batch-logprob-gap
 
 ## License
 

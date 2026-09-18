@@ -1,0 +1,16 @@
+name: checks
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # the tables in README.md must be the ones build_tables.py produces from results/
+      - run: python scripts/build_tables.py > /tmp/TABLES.md && diff -u TABLES.md /tmp/TABLES.md
+      - run: python scripts/refresh_readme.py && git diff --exit-code README.md
+      - run: python scripts/check_table_anchors.py
+      # the report may only quote numbers that occur in a committed result file
+      - run: python paper/build.py && git diff --exit-code paper/report.md
