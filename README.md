@@ -202,6 +202,8 @@ on two seeds.
 
 1. *"Enabling vLLM's batch-invariant kernels should shrink it."* It does not: 8.0% to 7.1%,
    while changing the trainer's precision goes to 3.7% in one step. Predicted in public, wrong.
+   ([results/kernel_arms.json](results/kernel_arms.json), [logs/measure.log](logs/measure.log);
+   3,916 tokens rescored under each kernel set by `scripts/measure.py`.)
 2. *"Generate under both kernel settings and compare token by token."* Not a valid comparison --
    45 of 64 sequences diverge, median at generated token 21. The paired design had to be
    replaced by teacher-forced rescoring.

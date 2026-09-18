@@ -12,5 +12,7 @@ jobs:
       - run: python scripts/build_tables.py > /tmp/TABLES.md && diff -u TABLES.md /tmp/TABLES.md
       - run: python scripts/refresh_readme.py && git diff --exit-code README.md
       - run: python scripts/check_table_anchors.py
+      # the figures the README states in prose, not in a table
+      - run: python scripts/check_prose_numbers.py
       # the report may only quote numbers that occur in a committed result file
       - run: python paper/build.py && git diff --exit-code paper/report.md

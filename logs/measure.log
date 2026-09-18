@@ -1,0 +1,23 @@
+loading bf16 ...
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights:  24%|██▍       | 69/290 [00:00<00:00, 646.67it/s]Loading weights:  49%|████▊     | 141/290 [00:00<00:00, 684.24it/s]Loading weights:  74%|███████▍  | 216/290 [00:00<00:00, 703.35it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 749.44it/s]
+loading fp32 ...
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights:   0%|          | 1/290 [00:00<02:23,  2.01it/s]Loading weights:  72%|███████▏  | 209/290 [00:00<00:00, 458.79it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 399.02it/s]
+
+== trainer against itself: no rollout engine involved ==
+  fp32 trainer, batch 1 vs 8                     mean -0.000000  sd 0.000008  p95|gap| 0.00002  max 0.00020  out[0.9,1.1]    0/3916 (0.0%)
+  bf16 trainer, batch 1 vs 8                     mean +0.000107  sd 0.055433  p95|gap| 0.11683  max 0.65602  out[0.9,1.1]  314/3916 (8.0%)
+  bf16 trainer, batch 1 vs 64                    mean +0.001272  sd 0.057571  p95|gap| 0.11870  max 1.05907  out[0.9,1.1]  363/3916 (9.3%)
+  trainer batch 1, bf16 vs fp32                  mean +0.000637  sd 0.047525  p95|gap| 0.09774  max 0.93798  out[0.9,1.1]  184/3916 (4.7%)
+
+== rollout engine against itself ==
+  vLLM rescore, batch-invariant off vs on        mean +0.000857  sd 0.050882  p95|gap| 0.11333  max 0.64042  out[0.9,1.1]  301/3916 (7.7%)
+  vLLM generation vs its own rescore (BI=0)      mean +0.000406  sd 0.051348  p95|gap| 0.11331  max 0.62559  out[0.9,1.1]  287/3916 (7.3%)
+
+== the ratio GRPO actually applies ==
+  vLLM generation  vs  bf16 trainer b8           mean -0.001548  sd 0.049858  p95|gap| 0.11314  max 0.47671  out[0.9,1.1]  294/3916 (7.5%)
+  vLLM rescore BI=0  vs  bf16 trainer b8         mean -0.001142  sd 0.052795  p95|gap| 0.11605  max 0.67818  out[0.9,1.1]  314/3916 (8.0%)
+  vLLM BI=1  vs  bf16 trainer b8                 mean -0.000285  sd 0.052559  p95|gap| 0.11292  max 0.78929  out[0.9,1.1]  277/3916 (7.1%)
+  vLLM BI=0  vs  fp32 trainer b8                 mean -0.001672  sd 0.042384  p95|gap| 0.09066  max 0.37131  out[0.9,1.1]  144/3916 (3.7%)
+  vLLM BI=1  vs  fp32 trainer b8                 mean -0.000815  sd 0.042786  p95|gap| 0.08745  max 0.47485  out[0.9,1.1]  137/3916 (3.5%)
+
+  tokens per comparison: 3916
