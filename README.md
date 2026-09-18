@@ -44,9 +44,9 @@ Yes, and specifically:
   almost none of it on pythia;
 - **scoring in fp16 removes it** on every Qwen-family model here at bf16 cost, and fp16 does not
   overflow on Qwen2.5 up to 7B.
-- and at 1.5B on GSM8K it does **not** reach the reward: five ways of computing the old
-  log-probabilities, same seed, finish within -0.011 to +0.004 of each other after 150 steps, with
-  the clip fraction at zero throughout.
+- and at 1.5B on GSM8K it does **not** reach the reward: six ways of computing the old
+  log-probabilities, same seeds, finish within -0.013 to +0.008 of each other after 150 steps on
+  both seeds, with the clip fraction at zero throughout.
 
 ## Tables
 
@@ -140,12 +140,12 @@ measurement; the trainer-side fix is a TRL change, not a change to this harness.
 
 ### Does it reach the reward
 
-Five ways of computing the old log-probabilities in TRL's GRPO, run on the same seed so that the
+Six ways of computing the old log-probabilities in TRL's GRPO, run on the same seeds so that the
 arms share prompt order and vLLM sampling and differ only in that one pass: the trainer's own bf16
 pass (A), an fp32 copy of the policy (B), bf16 with the chunk size forced to the training
-micro-batch (C), bf16 with the divergence-guided layers and the head in fp32 (D), and bf16 with
-only the fp32 head (E). Qwen2.5-1.5B-Instruct on GSM8K, 4 prompts x 8 completions per step,
-lr 2e-6, one optimisation step per generation, 150 steps.
+micro-batch (C), bf16 with the divergence-guided layers and the head in fp32 (D), bf16 with only
+the fp32 head (E), and an fp16 copy of the policy (F). Qwen2.5-1.5B-Instruct on GSM8K, 4 prompts x
+8 completions per step, lr 2e-6, one optimisation step per generation, 150 steps, two seeds.
 
 <!-- T10 -->
 | arm | seeds | reward, last 30 steps | reward, mean over 150 | vs A, same seed | clip fraction | vLLM-vs-old abs dlogp | s/step |
@@ -154,18 +154,19 @@ lr 2e-6, one optimisation step per generation, 150 steps.
 | B fp32 clone | 2 | 0.658 | 0.641 | +0.004 / -0.003 | 0.0005 | 0.0092 | 11.8 |
 | C bf16, chunk = micro-batch | 2 | 0.655 | 0.639 | -0.004 / +0.000 | 0.0000 | 0.0113 | 8.9 |
 | D bf16 + guided fp32 layers + head | 2 | 0.651 | 0.647 | +0.001 / -0.013 | 0.0007 | 0.0104 | 10.9 |
-| E bf16 + fp32 head only | 1 | 0.671 | 0.640 | -0.011 | 0.0000 | 0.0102 | 9.0 |
-| F fp16 clone | 1 | 0.690 | 0.650 | +0.008 | 0.0005 | 0.0093 | 8.6 |
+| E bf16 + fp32 head only | 2 | 0.651 | 0.639 | -0.011 / -0.001 | 0.0000 | 0.0104 | 8.8 |
+| F fp16 clone | 2 | 0.661 | 0.650 | +0.008 / +0.001 | 0.0006 | 0.0094 | 8.5 |
 <!-- /T10 -->
 
-None of them separates from the default. The last-30-step reward sits within -0.011 to +0.004 of
-arm A and the 150-step mean within +0.001 to +0.015, against a per-step noise of sd 0.14 (SE 0.026
-on a 30-step mean); the clip fraction is 0.0000 to 0.0005 in every arm, because at one optimisation
-step per generation the ratio is 1 up to exactly this noise, and the noise never reaches the 0.2
-clip band. The batch-shape noise is real and it is in the ratio; at this scale and these defaults
-it does not move the reward. That is the bound this harness can put on it: a few points at most,
-with no consistent sign, on one seed. A second seed and an fp16 arm are running and enter T10 as
-they finish.
+None of them separates from the default. Per seed, the last-30-step reward sits within -0.013 to
++0.008 of arm A and the 150-step mean within +0.001 to +0.011, against a per-step noise of sd 0.14
+(SE 0.026 on a 30-step mean); across the two seeds the arm means differ by less than the seed-to-seed
+spread of any single arm (0.03 to 0.05). The clip fraction is 0.0000 to 0.0005 in every arm, because
+at one optimisation step per generation the ratio is 1 up to exactly this noise, and the noise never
+reaches the 0.2 clip band. The batch-shape noise is real and it is in the ratio; at this scale and
+these defaults it does not move the reward, and neither does removing it (B, F) or removing only part
+of it (D, E). That is the bound this harness can put on it: about a point, with no consistent sign,
+on two seeds.
 
 ## What this harness cannot tell you
 

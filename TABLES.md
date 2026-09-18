@@ -114,8 +114,8 @@ a positive quarter is where the two batch shapes drift apart, a negative one is 
 | B fp32 clone | 2 | 0.658 | 0.641 | +0.004 / -0.003 | 0.0005 | 0.0092 | 11.8 |
 | C bf16, chunk = micro-batch | 2 | 0.655 | 0.639 | -0.004 / +0.000 | 0.0000 | 0.0113 | 8.9 |
 | D bf16 + guided fp32 layers + head | 2 | 0.651 | 0.647 | +0.001 / -0.013 | 0.0007 | 0.0104 | 10.9 |
-| E bf16 + fp32 head only | 1 | 0.671 | 0.640 | -0.011 | 0.0000 | 0.0102 | 9.0 |
-| F fp16 clone | 1 | 0.690 | 0.650 | +0.008 | 0.0005 | 0.0093 | 8.6 |
+| E bf16 + fp32 head only | 2 | 0.651 | 0.639 | -0.011 / -0.001 | 0.0000 | 0.0104 | 8.8 |
+| F fp16 clone | 2 | 0.661 | 0.650 | +0.008 / +0.001 | 0.0006 | 0.0094 | 8.5 |
 
 Same seed means the same prompt order and the same vLLM sampling seed, so the arms start as near-replicas and
 only the old-log-prob pass differs; the per-step reward noise is sd 0.14, so a 30-step mean carries an SE of about 0.026.
