@@ -89,7 +89,7 @@ Tracking the batch-1-vs-batch-8 relative divergence of the hidden states layer b
 | Qwen3-1.7B | 28 | +1.1e-02 | +4.7e-03 | -1.8e-03 | +1.5e-03 | 0.015 | [0, 27, 1, 2] |
 | pythia-410m (NeoX 0.41B) | 24 | +9.6e-03 | +1.4e-03 | +1.4e-02 | +9.0e-02 | 0.115 | [23, 19, 21, 22] |
 
-GPT-NeoX builds almost all of it in the last quarter of the stack; the Qwen2 and Qwen3 models inject it in the first five layers, carry it, and partly re-align it later. This is why an fp32 `lm_head` — the ScaleRL and MiniMax-M1 recipe, and TRL's `cast_lm_head_to_fp32` — removes two thirds to four fifths of the out-of-band tokens on Qwen and leaves pythia essentially unchanged (34.26% → 32.24%).
+GPT-NeoX builds almost all of it in the last quarter of the stack; the Qwen2 and Qwen3 models inject it in the first five layers, carry it, and partly re-align it later. This is why an fp32 `lm_head` — the ScaleRL and MiniMax-M1 recipe, and TRL's `cast_lm_head_to_fp32` — removes 64% to 81% of the out-of-band tokens on Qwen and leaves pythia essentially unchanged (34.26% → 32.24%).
 
 # 5. What precision buys, and what it costs
 

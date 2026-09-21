@@ -131,7 +131,7 @@ On pythia-410m an fp32 `lm_head` leaves the rate at 32.24% (from 34.26%) because
 has already drifted apart in the last third of the stack: the last quarter of the layers contributes
 +9.0e-2 of the 0.115 total. The Qwen2 and Qwen3 models are the mirror image. Their first five layers
 inject almost all of it (+1.0e-2 to +1.1e-2 in the first quarter), the middle of the stack carries it
-unchanged, and an fp32 head removes two thirds to four fifths of the out-of-band tokens there.
+unchanged, and an fp32 head removes 64% to 81% of the out-of-band tokens there.
 
 That profile says which layers are worth upcasting. Holding the eight layers with the largest
 increment in fp32, plus the head, costs 34% to 41% of the parameters and reaches 0.41% on pythia and

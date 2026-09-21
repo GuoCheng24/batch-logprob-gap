@@ -16,3 +16,6 @@ jobs:
       - run: python scripts/check_prose_numbers.py
       # the report may only quote numbers that occur in a committed result file
       - run: python paper/build.py && git diff --exit-code paper/report.md
+      # and the committed PDF must be the one built from that report, not a version behind it
+      - run: sudo apt-get install -y -qq poppler-utils
+      - run: python paper/check_pdf_current.py
