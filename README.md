@@ -11,7 +11,11 @@ inner epoch that ratio is the identity by construction. Whatever moves it there 
 off-policy correction the algorithm applies to a policy that never changed.
 
 This repository is the measurement, the controls that survived, and the ones that killed my
-own first three explanations.
+own first three explanations. It also says where the effect stops: at 1.5B on GSM8K, six
+different ways of computing that log probability — including removing the noise outright —
+finish within 0.013 reward of each other after 150 steps on two seeds. The noise is real, it
+is in the ratio, and at this scale it does not move what the model learns. Both halves of that
+are measured here.
 
 **Written up as a six-page report: [paper/report.pdf](paper/report.pdf)** — the same measurement
 with every control in one place, assembled by [`paper/build.py`](paper/build.py), which splices the
@@ -33,8 +37,10 @@ that anyone can re-run it.
 
 Yes, and specifically:
 
-- it is **bfloat16**, not low precision generally: fp16 has the same 16 bits and cuts the rate by
-  an order of magnitude, fp32 removes it entirely;
+- it is **bfloat16**, not low precision generally: fp16 has the same 16 bits, three more of them
+  mantissa, and on most of these models that is enough — 0.07% and below across the Qwen family,
+  0.97% on the MoE — but on GPT-NeoX it only buys one to two orders of magnitude (60.0% to 22.0%
+  at 160M, 36.7% to 2.5% at 410M). fp32 removes it everywhere;
 - it is the **batch**, not the padding: equal-length sequences with no padding at all behave the
   same as ragged padded ones;
 - it is **batch size**, not batch membership: eight identical copies of one sequence, scored
@@ -43,12 +49,12 @@ Yes, and specifically:
   whose per-token log probabilities change when the same batch is merely regrouped;
 - it survives **eager**, **sdpa** and **flex_attention**, so it is not one kernel's artefact;
 - and it reaches the objective: the fraction of tokens that PPO clipping *excludes* barely
-  moves, but **which** tokens are excluded moves by 1.7% to 10.1%.
+  moves, but **which** tokens are excluded moves by 1.7% to 10.1%;
 - it enters **where the architecture puts it**: in the last third of the stack for GPT-NeoX and in
   the first five layers for Qwen2 and Qwen3, so an fp32 `lm_head` removes most of it on Qwen and
   almost none of it on pythia;
-- **scoring in fp16 removes it** on every Qwen-family model here at bf16 cost, and fp16 does not
-  overflow on Qwen2.5 up to 7B.
+- **scoring in fp16 costs nothing and removes it** where fp16 is enough (0.93x to 0.99x the bf16
+  time), and fp16 does not overflow on Qwen2.5 up to 7B;
 - and at 1.5B on GSM8K it does **not** reach the reward: six ways of computing the old
   log-probabilities, same seeds, finish within -0.013 to +0.008 of each other after 150 steps on
   both seeds, with the clip fraction at zero throughout.

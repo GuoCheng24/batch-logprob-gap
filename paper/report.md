@@ -25,7 +25,7 @@ The question is the one left open in verl issue #6280 since May 2026: on-policy 
 | Qwen2.5-3B | 6.87% | 0.00% | 0.00% | 0.00% | 7.17% |
 | Qwen2.5-7B | 5.60% | 0.00% | 0.00% | 0.00% | 5.71% |
 
-Repeating the *same* batch is bit-exact (column 4), so this is not nondeterminism; it is a deterministic function of the batch shape. fp16, with the same 16 bits, cuts the rate by an order of magnitude on most models and fp32 removes it. Three controls separate the candidate causes:
+Repeating the *same* batch is bit-exact (column 4), so this is not nondeterminism; it is a deterministic function of the batch shape. fp16, with the same 16 bits but three more of them mantissa, is enough on most of these models -- 0.07% and below across the Qwen family, 0.97% on the MoE -- and only buys one to two orders of magnitude on GPT-NeoX (60.0% to 22.0% at 160M, 36.7% to 2.5% at 410M); fp32 removes it everywhere. Three controls separate the candidate causes:
 
 | model | A padded ragged b1v8 | B equal-length no pad b1v8 | C same seq x8 vs alone | D two groupings of batch 8 |
 |---|---|---|---|---|
