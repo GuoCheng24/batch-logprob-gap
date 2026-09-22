@@ -1,7 +1,7 @@
 {
- "note": "Device properties read from torch on each machine, not typed in. The hardware arm compares these three cards: two Ada parts of the same compute capability, and one Volta part with no native bfloat16 tensor cores.",
+ "note": "Device properties read from torch on each machine, not typed in. The hardware arm compares these three cards: two Ada parts of the same compute capability, and one Volta part with no native bfloat16 tensor cores. Host labels are local cluster names replaced with neutral ones; the pairing of card to machine is what matters.",
  "rtx4090": {
-  "host": "gpu-node-c",
+  "host": "machine-a",
   "name": "NVIDIA GeForce RTX 4090",
   "multi_processor_count": 128,
   "compute_capability_major": 8,
@@ -11,7 +11,7 @@
   "torch": "2.10.0+cu128"
  },
  "l40": {
-  "host": "gpu-node-d",
+  "host": "machine-b",
   "name": "NVIDIA L40",
   "multi_processor_count": 142,
   "compute_capability_major": 8,
@@ -21,7 +21,7 @@
   "torch": "2.10.0+cu128"
  },
  "v100": {
-  "host": "gpu-node-b",
+  "host": "machine-c",
   "name": "Tesla V100-SXM3-32GB",
   "multi_processor_count": 80,
   "compute_capability_major": 7,
