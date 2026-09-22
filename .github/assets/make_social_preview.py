@@ -33,7 +33,25 @@ def rate(stem, key="bf16|b1_vs_b8"):
 
 BARS = [(label, rate(stem)) for label, stem in SHOWN]
 lo = min(rate(s) for s in ALL)
-fp32 = max(rate(s, "fp32|b1_vs_b8") for s in ALL)
+
+# "on every card" has to be computed, not asserted: the worst fp32 cell across
+# every model on the RTX 4090 and every model re-run on the L40 and the V100.
+import glob as _glob
+HW = RESULTS / "hardware"
+
+
+def _rate(path, key="fp32|b1_vs_b8"):
+    d = json.loads(pathlib.Path(path).read_text())
+    r = d["results"][key]
+    return 100 * r["out"] / r["n"]
+
+
+_hw = sorted(_glob.glob(str(HW / "*_hfonly_*.json")))
+if not _hw:
+    raise SystemExit("no second-card results: the card must not claim 'every card'")
+fp32 = max([rate(s, "fp32|b1_vs_b8") for s in ALL] + [_rate(p) for p in _hw])
+N_CARDS = len({pathlib.Path(p).name.split("_hfonly_")[0].replace("rtx4090_rerun", "rtx4090")
+               for p in _hw} | {"rtx4090"})
 
 
 def chart(ax, accent):
@@ -49,18 +67,19 @@ def chart(ax, accent):
                 fontweight="bold", color="#17181a", family=SANS, va="center")
     # one line, left-aligned under the bars: two texts on the same baseline put the fp32
     # figure on top of a bar label and its own sentence on top of a bar value
-    ax.text(0.78, top - 4.05 * step, f"{fp32:.2f}% in fp32, and on a rerun of the same batch",
+    ax.text(0.78, top - 4.05 * step, f"{fp32:.2f}% in fp32 on every card, and on a rerun",
             fontsize=34, fontweight="bold", color="#1a7f37", family=SANS, va="center")
 
 
 out = card(
     out=str(pathlib.Path(__file__).parent / "social-preview.png"),
     accent="#cf222e", badge="G",
-    kicker="RL POST-TRAINING  ·  8 models, 4 architectures",
+    kicker=f"RL POST-TRAINING  ·  8 models, 4 families, {N_CARDS} GPUs",
     headline="Change the batch, move the ratio",
     evidence=f"ratios leaving [0.9, 1.1] in bf16, {lo:.1f}% to {max(v for _, v in BARS):.1f}%",
     chart=chart,
     footer="github.com/GuoCheng24/batch-logprob-gap",
     headline_size=44,
 )
-print(f"written {pathlib.Path(out).name}  range {lo:.2f}-{max(v for _, v in BARS):.2f}%, fp32 {fp32:.2f}%")
+print(f"written {pathlib.Path(out).name}  range {lo:.2f}-{max(v for _, v in BARS):.2f}%, "
+      f"fp32 {fp32:.2f}% across {N_CARDS} GPUs")

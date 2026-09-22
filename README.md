@@ -94,31 +94,40 @@ Percentage of scored tokens whose importance ratio falls outside `[0.9, 1.1]`, 3
 cell. The rerun column is the control that matters: repeating the *same* batch is bit-exact, so
 this is not nondeterminism, it is a deterministic function of the batch shape.
 
-### It is not one card either
+### It is not one card, and it is not one architecture
 
 <!-- T1b -->
-| model | tokens | RTX 4090 | L40 | difference |
+| model | tokens scored | RTX 4090 (Ada) | L40 (Ada) | V100 (Volta) |
 |---|---|---|---|---|
-| pythia-410m | 3,970 | 36.70% | 36.47% | -0.23 |
-| Qwen2.5-0.5B | 4,085 | 9.87% | 9.77% | -0.10 |
-| Qwen2.5-1.5B | 3,959 | 9.37% | 8.66% | -0.71 |
+| pythia-410m | 3,970 / 3,970 / 4,083 | 36.70% | 36.47% | 25.79% |
+| Qwen2.5-0.5B | 4,085 / 4,085 / 4,038 | 9.87% | 9.77% | 7.43% |
+| Qwen2.5-1.5B | 3,959 / 3,959 / 3,978 | 9.37% | 8.66% | 6.74% |
 <!-- /T1b -->
 
-The same script, the same venv (torch 2.10.0+cu128, transformers 5.16.1), the same models, on an
-RTX 4090 and on an L40. The 4090 arm was re-run alongside the L40 one, long after the numbers in T1
+The same script, the same venv (torch 2.10.0+cu128, transformers 5.16.1), the same models, on three
+cards: the RTX 4090 every published number here comes from, an L40 - a different Ada chip, 142
+streaming multiprocessors against 128 - and a V100, which is Volta, compute capability 7.0, and has
+**no native bfloat16 tensor cores at all**.
+
+The control first. The RTX 4090 arm was re-run alongside the others, long after the numbers in T1
 were recorded, and reproduces them **exactly** - 1457, 1455, 0, 99, 0 out-of-band tokens for
-pythia-410m, every cell. So what follows is a comparison between two cards and not between two
-environments.
+pythia-410m, every cell. So this compares cards, not environments.
 
-The rate moves by 0.10 to 0.71 points. `bf16 b1 rerun` is 0 on both cards for all three models, so
-the forward pass is bit-reproducible within a machine on either one, and fp32 is 0 on both. What
-changes between the cards is the effect's exact size, not whether it is there and not whether fp32
-removes it.
+**The effect is on every card, and fp32 removes it on every card.** `bf16 b1 rerun` is 0 in all
+nine cells, so the forward pass is bit-reproducible within a machine on all three, and
+`fp32 b1_vs_b8` is 0 in all nine. What changes is the size: between the two Ada cards the rate moves
+by 0.10 to 0.71 points, and on Volta it is lower by 2.44 to 10.91.
 
-This narrows the limitation below rather than removing it: an L40 and an RTX 4090 are both Ada and
-both compute capability 8.9. It is a different chip - 142 streaming multiprocessors against 128, a
-different memory system - not a different architecture. `scripts/hw_compare.py` prints the table and
-checks the control.
+Two things this does not settle. It is **not a paired comparison**: `hf_only.py` samples its own
+rollouts before scoring them, and on the V100 the same seed produces a different rollout - 4,083
+tokens where both Ada cards produce 3,970 - which is the same class of effect one level up. Only the
+rates are comparable across architectures; between the two Ada cards, which do produce identical
+token counts, the counts are comparable too. And the obvious explanation for Volta being lower - that
+bfloat16 there is not the arithmetic it is on Ada, so batch-dependent reduction order has less room
+to matter - does **not** account for fp16 also being lower on a card that does have fp16 tensor
+cores (2.49% to 0.81% on pythia-410m). It is offered as a hypothesis, not a finding.
+
+`scripts/hw_compare.py` prints the table and fails if the control stops reproducing.
 
 ### Padding, batch size, and batch membership, separated
 
@@ -223,10 +232,12 @@ on two seeds.
   `nvcc`), so the one configuration that reported `max_abs_diff = 0` is exactly the one I cannot
   test. That null and these numbers are not in contradiction until someone runs both paths on
   the same hardware.
-- **One architecture.** T1b adds an L40 and the rate moves by 0.10 to 0.71 points, with the
-  bit-exact rerun control at 0 and fp32 at 0 on both cards. But both are Ada, compute capability
-  8.9. A genuinely different architecture - Hopper, or anything pre-Ampere where bf16 is not
-  native - is still untested, and reduction strategies are chosen per architecture.
+- **Three cards, two architectures.** T1b measures this instead of assuming it. The effect is
+  present and fp32 removes it on Ada and on Volta alike, with the bit-exact rerun control at 0 in
+  all nine cells; the rate moves 0.10 to 0.71 points between two Ada chips and is 2.44 to 10.91
+  points lower on Volta. What is still untested is the other direction - Hopper and Blackwell,
+  where the bf16 paths are more aggressive than Ada's, not less - so the size of this effect on
+  current datacentre hardware is not something these three cards can say.
 - **Small models.** The largest here is Qwen2.5-7B; the production report was a 30B MoE. Within the Qwen2.5 family the rate drifts from 9.9%, 9.4%, 6.9%, 5.6% (0.5B, 1.5B, 3B, 7B), so size attenuates it slowly within a family, while the spread across families is far larger than the spread across sizes. The lowest rate in the set is Agents-A1-4B. What a 30B MoE does is not something this harness can say.
 - **Synthetic advantages.** The clip-flip metric needs an advantage per sequence. It is drawn,
   not earned, and the rate depends on the distribution: 8.59% under Gaussian advantages, 2.47%

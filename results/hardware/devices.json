@@ -1,5 +1,5 @@
 {
- "note": "Device properties read from torch on each machine, not typed in. The hardware arm compares these two cards.",
+ "note": "Device properties read from torch on each machine, not typed in. The hardware arm compares these three cards: two Ada parts of the same compute capability, and one Volta part with no native bfloat16 tensor cores.",
  "rtx4090": {
   "host": "gpu-node-c",
   "name": "NVIDIA GeForce RTX 4090",
@@ -18,6 +18,16 @@
   "compute_capability_minor": 9,
   "compute_capability": 8.9,
   "total_memory_GiB": 44.4,
+  "torch": "2.10.0+cu128"
+ },
+ "v100": {
+  "host": "gpu-node-b",
+  "name": "Tesla V100-SXM3-32GB",
+  "multi_processor_count": 80,
+  "compute_capability_major": 7,
+  "compute_capability_minor": 0,
+  "compute_capability": 7.0,
+  "total_memory_GiB": 31.7,
   "torch": "2.10.0+cu128"
  }
 }
