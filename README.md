@@ -110,8 +110,10 @@ streaming multiprocessors against 128 - and a V100, which is Volta, compute capa
 **no native bfloat16 tensor cores at all**.
 
 The control first. The RTX 4090 arm was re-run alongside the others, long after the numbers in T1
-were recorded, and reproduces them **exactly** - 1457, 1455, 0, 99, 0 out-of-band tokens for
-pythia-410m, every cell. So this compares cards, not environments.
+were recorded, and reproduces them **exactly for all three models** - 1457, 1455, 0, 99, 0 for
+pythia-410m, 403, 439, 0, 3, 0 for Qwen2.5-0.5B and 371, 351, 0, 0, 0 for Qwen2.5-1.5B, every cell.
+So this compares cards, not environments - and the recorded numbers reproduce on hardware months
+later, which is a claim this repository could not previously make.
 
 **The effect is on every card, and fp32 removes it on every card.** `bf16 b1 rerun` is 0 in all
 nine cells, so the forward pass is bit-reproducible within a machine on all three, and
