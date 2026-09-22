@@ -1,0 +1,23 @@
+{
+ "note": "Device properties read from torch on each machine, not typed in. The hardware arm compares these two cards.",
+ "rtx4090": {
+  "host": "gpu-node-c",
+  "name": "NVIDIA GeForce RTX 4090",
+  "multi_processor_count": 128,
+  "compute_capability_major": 8,
+  "compute_capability_minor": 9,
+  "compute_capability": 8.9,
+  "total_memory_GiB": 23.5,
+  "torch": "2.10.0+cu128"
+ },
+ "l40": {
+  "host": "gpu-node-d",
+  "name": "NVIDIA L40",
+  "multi_processor_count": 142,
+  "compute_capability_major": 8,
+  "compute_capability_minor": 9,
+  "compute_capability": 8.9,
+  "total_memory_GiB": 44.4,
+  "torch": "2.10.0+cu128"
+ }
+}

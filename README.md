@@ -94,6 +94,32 @@ Percentage of scored tokens whose importance ratio falls outside `[0.9, 1.1]`, 3
 cell. The rerun column is the control that matters: repeating the *same* batch is bit-exact, so
 this is not nondeterminism, it is a deterministic function of the batch shape.
 
+### It is not one card either
+
+<!-- T1b -->
+| model | tokens | RTX 4090 | L40 | difference |
+|---|---|---|---|---|
+| pythia-410m | 3,970 | 36.70% | 36.47% | -0.23 |
+| Qwen2.5-0.5B | 4,085 | 9.87% | 9.77% | -0.10 |
+| Qwen2.5-1.5B | 3,959 | 9.37% | 8.66% | -0.71 |
+<!-- /T1b -->
+
+The same script, the same venv (torch 2.10.0+cu128, transformers 5.16.1), the same models, on an
+RTX 4090 and on an L40. The 4090 arm was re-run alongside the L40 one, long after the numbers in T1
+were recorded, and reproduces them **exactly** - 1457, 1455, 0, 99, 0 out-of-band tokens for
+pythia-410m, every cell. So what follows is a comparison between two cards and not between two
+environments.
+
+The rate moves by 0.10 to 0.71 points. `bf16 b1 rerun` is 0 on both cards for all three models, so
+the forward pass is bit-reproducible within a machine on either one, and fp32 is 0 on both. What
+changes between the cards is the effect's exact size, not whether it is there and not whether fp32
+removes it.
+
+This narrows the limitation below rather than removing it: an L40 and an RTX 4090 are both Ada and
+both compute capability 8.9. It is a different chip - 142 streaming multiprocessors against 128, a
+different memory system - not a different architecture. `scripts/hw_compare.py` prints the table and
+checks the control.
+
 ### Padding, batch size, and batch membership, separated
 
 <!-- T2 -->
@@ -197,8 +223,10 @@ on two seeds.
   `nvcc`), so the one configuration that reported `max_abs_diff = 0` is exactly the one I cannot
   test. That null and these numbers are not in contradiction until someone runs both paths on
   the same hardware.
-- **One GPU generation.** Everything is RTX 4090, SM89. Reduction strategies differ across
-  architectures.
+- **One architecture.** T1b adds an L40 and the rate moves by 0.10 to 0.71 points, with the
+  bit-exact rerun control at 0 and fp32 at 0 on both cards. But both are Ada, compute capability
+  8.9. A genuinely different architecture - Hopper, or anything pre-Ampere where bf16 is not
+  native - is still untested, and reduction strategies are chosen per architecture.
 - **Small models.** The largest here is Qwen2.5-7B; the production report was a 30B MoE. Within the Qwen2.5 family the rate drifts from 9.9%, 9.4%, 6.9%, 5.6% (0.5B, 1.5B, 3B, 7B), so size attenuates it slowly within a family, while the spread across families is far larger than the spread across sizes. The lowest rate in the set is Agents-A1-4B. What a 30B MoE does is not something this harness can say.
 - **Synthetic advantages.** The clip-flip metric needs an advantage per sequence. It is drawn,
   not earned, and the rate depends on the distribution: 8.59% under Gaussian advantages, 2.47%

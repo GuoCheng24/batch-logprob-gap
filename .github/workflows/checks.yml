@@ -14,6 +14,9 @@ jobs:
       - run: python scripts/check_table_anchors.py
       # the figures the README states in prose, not in a table
       - run: python scripts/check_prose_numbers.py
+      # The hardware arm's control: tonight's RTX 4090 must reproduce the recorded
+      # numbers, or the L40 comparison is between two environments, not two cards.
+      - run: python scripts/hw_compare.py
       # the report may only quote numbers that occur in a committed result file
       - run: python paper/build.py && git diff --exit-code paper/report.md
       # and the committed PDF must be the one built from that report, not a version behind it
