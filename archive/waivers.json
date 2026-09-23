@@ -1,0 +1,4 @@
+{
+ "noise": "The instrument here is arithmetic, not a scorer: the measurement is a max absolute logprob difference, and the repeat control is column `bf16 b1 rerun` in README T1, which is exactly 0 for all three models - repeating the same batch is bit-exact. The whole RTX 4090 arm was re-run long after T1 was recorded and reproduced it cell for cell (results/hardware/rtx4090_rerun_*.json). A separate noise file would restate a number the table already carries.",
+ "prereg": "This repository demonstrates a numerical property and ships the script that produces it; every figure is regenerated from committed code. No hypothesis is being tested against a threshold, so a pre-registration would have nothing to fix in advance. The one designed comparison - three GPU architectures, T1b - states its arms and its fixed settings in the README above its own table."
+}
