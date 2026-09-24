@@ -285,6 +285,14 @@ In text:
 > Guo Cheng. *In bfloat16 the batch shape moves the importance ratio: measurement, controls, and what
 > removes it.* Technical report, September 2026. https://github.com/GuoCheng24/batch-logprob-gap
 
+## Other things from the same desk
+
+- [ifeval-reproduction](https://github.com/GuoCheng24/ifeval-reproduction) — reproducing a published IFEval score under a pre-registration chain, and the paired test that killed my own conclusion
+- [taichu-eval-reproduction](https://github.com/GuoCheng24/taichu-eval-reproduction) — re-measuring two model-card numbers on the full benchmarks, where one verdict turns on how truncated generations are counted
+- [groundwork](https://github.com/GuoCheng24/groundwork) — a research pipeline for coding agents whose first stage can return NO-GO; on PyPI as `groundwork-research`
+
+More at [github.com/GuoCheng24](https://github.com/GuoCheng24).
+
 ## License
 
 MIT.
