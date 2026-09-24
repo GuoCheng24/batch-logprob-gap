@@ -30,8 +30,12 @@ a question nobody has answered:
 
 > Is this caused by kernels that are not batch-invariant?
 
-These numbers are an attempt to answer that question, from a single-GPU harness small enough
-that anyone can re-run it.
+The mechanism is not new either: Thinking Machines traced batch-dependent reduction order in
+[Defeating Nondeterminism in LLM Inference](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/)
+(2025-09), and sail-sg proposed fp16 for the whole training loop
+([arXiv 2510.26788](https://arxiv.org/abs/2510.26788)). What was missing is its size on the trainer
+side, model by model, and whether it reaches the reward. These numbers are an attempt to answer that,
+from a single-GPU harness small enough that anyone can re-run it.
 
 ## The answer, as far as this harness can establish it
 
@@ -194,7 +198,10 @@ normalises over the full vocabulary. The ratio then carries a factor equal to th
 at `top_p=0.8` on Qwen2.5-1.5B-Instruct it averages 0.896 for an unchanged policy and leaves `[0.9, 1.1]`
 for 51.8% of tokens (T11 in [TABLES.md](TABLES.md)). vLLM 0.28 can return the kept token ids of every
 generated token; renormalising the trainer's log probability over that set brings the ratio to 1.001 and
-the out-of-band rate to 4.3%, the same floor as the untruncated control. `scripts/trunc_bias.py` is the
+the out-of-band rate to 4.3%, the same floor as the untruncated control. The remedy itself is known:
+DeepSeek-V3.2 keeps the sampling mask from rollout and applies it to the trained policy ("Keep Sampling
+Mask", [arXiv 2512.02556](https://arxiv.org/abs/2512.02556)); what this adds is how large the term is
+when the mask is dropped. `scripts/trunc_bias.py` is the
 measurement; the trainer-side fix is a TRL change, not a change to this harness.
 
 ### Does it reach the reward
