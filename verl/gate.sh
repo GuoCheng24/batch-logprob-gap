@@ -18,9 +18,11 @@ DATA=${DATA:-$HOME/data/gsm8k}
 STEPS=${STEPS:-2}
 mkdir -p logs
 
-# never start on a card someone else is filling
+# never start on a card someone else is filling. awk reads to the end rather than exiting at the
+# first match: an early exit sends nvidia-smi SIGPIPE, and under pipefail + set -e the script
+# then died with status 141 and printed nothing.
 GPU=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits \
-      | awk -F', ' -v m="${MIN_FREE_MB:-30000}" '$2>=m{print $1; exit}')
+      | awk -F', ' -v m="${MIN_FREE_MB:-30000}" '!found && $2>=m{print $1; found=1}')
 [ -z "$GPU" ] && { echo "no GPU with ${MIN_FREE_MB:-30000} MB free, not starting"; exit 3; }
 export CUDA_VISIBLE_DEVICES=$GPU OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 RAY_DEDUP_LOGS=0
 
