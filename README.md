@@ -204,8 +204,8 @@ Mask", [arXiv 2512.02556](https://arxiv.org/abs/2512.02556)); what this adds is 
 when the mask is dropped. `scripts/trunc_bias.py` is the
 measurement; the trainer-side fix is a TRL change, not a change to this harness.
 Inside verl the same term does more than bias a ratio: with truncated sampling, two of its
-rollout-correction presets reject every sequence and training stops without a warning, and a
-fix needs only the size of the kept set, not its ids. That is measured in [verl/](verl/).
+rollout-correction presets reject every sequence and the gradient goes to zero behind a warning
+that never names the cause, and a fix needs only the size of the kept set, not its ids. That is measured in [verl/](verl/).
 
 ### Does it reach the reward
 
