@@ -18,6 +18,11 @@ the FSDP engine without fused kernels, decoupled mode. It is switched on by
 vLLM require `top_k > 0`. A proper config switch, the legacy trainer, multi-turn loops and
 tests are for the PR.
 
+Run end to end with Qwen2.5-1.5B-Instruct for 100 steps with `use_remove_padding=False`
+([../README.md](../README.md), section 4), and with Qwen2.5-0.5B-Instruct for 2 steps on both
+padding paths ([../results/replay_check_0p5b.json](../results/replay_check_0p5b.json)).
+Ulysses sequence parallelism is handled like the per-token temperature but has not been run.
+
 The patch modifies verl, which is licensed under the Apache License 2.0
 ([LICENSE-Apache-2.0](LICENSE-Apache-2.0)); the patch is offered under the same license.
 The rest of this repository is MIT.

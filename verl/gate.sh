@@ -12,6 +12,7 @@
 #   GPU_UTIL     vLLM gpu_memory_utilization  default 0.30 (0a and 0b used 0.35)
 #   GPU          pin a GPU index instead of taking the first with MIN_FREE_MB free
 #   MICRO        micro-batch size for the actor passes   default 8, as in all the gates (smaller fits 24 GB cards)
+#   RMPAD        actor use_remove_padding (verl's default path)   default False, as in all the gates
 #   NGPU         GPUs per run (FSDP shards the optimizer across them); set GPU=a,b,... with it
 #                On cards without peer access (e.g. RTX 4090) also export NCCL_CUMEM_HOST_ENABLE=0:
 #                otherwise NCCL 2.29 fails in FSDP's first broadcast with CUDA error 217.
@@ -54,7 +55,7 @@ python -m verl.trainer.main_ppo \
   data.filter_overlong_prompts=True \
   data.truncation=error \
   actor_rollout_ref.model.path="$MODEL" \
-  actor_rollout_ref.model.use_remove_padding=False \
+  actor_rollout_ref.model.use_remove_padding="${RMPAD:-False}" \
   actor_rollout_ref.model.enable_gradient_checkpointing=True \
   actor_rollout_ref.model.use_fused_kernels=False \
   +actor_rollout_ref.model.override_config.attn_implementation=sdpa \

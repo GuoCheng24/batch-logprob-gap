@@ -25,5 +25,8 @@ case "${1:?0a|0b|0c|replay_check}" in
        COMMON="actor_rollout_ref.rollout.agent.num_workers=2 +ray_kwargs.ray_init.object_store_memory=4000000000"
        bash gate.sh 0.8 check_topk1024_noreplay $GEO actor_rollout_ref.rollout.top_k=1024 $COMMON
        PYTHONPATH=${VERL_PATCHED:?path to patched verl} bash gate.sh 0.8 check_topk1024_replay $GEO \
+         actor_rollout_ref.rollout.top_k=1024 +actor_rollout_ref.rollout.engine_kwargs.vllm.return_sampling_mask=True $COMMON
+       # the same with remove-padding, the path verl uses by default
+       RMPAD=True PYTHONPATH=$VERL_PATCHED bash gate.sh 0.8 check_topk1024_replay_rmpad $GEO \
          actor_rollout_ref.rollout.top_k=1024 +actor_rollout_ref.rollout.engine_kwargs.vllm.return_sampling_mask=True $COMMON ;;
 esac
