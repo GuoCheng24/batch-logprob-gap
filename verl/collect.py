@@ -14,7 +14,8 @@ import sys
 KEEP = ("rollout_corr/rollout_is_mean", "rollout_corr/kl", "rollout_corr/rollout_rs_seq_masked_fraction",
         "rollout_corr/rollout_rs_masked_fraction", "rollout_corr/rollout_is_seq_mean",
         "actor/grad_norm", "actor/pg_loss", "critic/score/mean",
-        "critic/advantages/max", "critic/advantages/min", "response_length/mean")
+        "critic/advantages/max", "critic/advantages/min", "response_length/mean",
+        "rollout_corr/log_kept_mass_mean")  # logged by the support-size replay prototype
 STEP = re.compile(r"step:(\d+) - (.*)")
 # verl prints "nan" for a metric it cannot compute (advantages when every token is masked).
 # An earlier version of this pattern matched digits only, dropped those, and made the
