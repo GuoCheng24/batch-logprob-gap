@@ -3,3 +3,5 @@ __pycache__/
 .coverage
 paper/page-*.png
 paper/arxiv/
+# raw verl/vLLM/Ray logs from gate.sh: machine-specific, collect.py turns them into results/
+verl/logs/
