@@ -1,0 +1,359 @@
+diff --git a/verl/experimental/agent_loop/agent_loop.py b/verl/experimental/agent_loop/agent_loop.py
+index d0e3038..346489d 100644
+--- a/verl/experimental/agent_loop/agent_loop.py
++++ b/verl/experimental/agent_loop/agent_loop.py
+@@ -96,6 +96,8 @@ class AgentLoopOutput(BaseModel):
+     """Response mask, 1 for LLM generated token, 0 for tool response token."""
+     response_logprobs: Optional[list[float]] = None
+     """Log probabilities for the response tokens."""
++    response_support_sizes: Optional[list[int]] = None
++    """Kept-set size of the truncated sampler at each response token (0 = not sampled / no replay)."""
+     routed_experts: Optional[Any] = None
+     """Routed experts for the total tokens."""
+     multi_modal_data: Optional[dict[str, Any]] = None
+@@ -126,6 +128,10 @@ class AgentLoopOutput(BaseModel):
+         if response_logprobs is not None:
+             output["rollout_log_probs"] = torch.tensor(response_logprobs, dtype=torch.float32)
+ 
++        response_support_sizes = output.pop("response_support_sizes", None)
++        if response_support_sizes is not None:
++            output["rollout_support_sizes"] = torch.tensor(response_support_sizes, dtype=torch.int64)
++
+         routed_experts = output.pop("routed_experts", None)
+         if routed_experts is not None:
+             routed_experts = torch.tensor(routed_experts, dtype=torch.int16)
+diff --git a/verl/experimental/agent_loop/single_turn_agent_loop.py b/verl/experimental/agent_loop/single_turn_agent_loop.py
+index 77205ca..8939272 100644
+--- a/verl/experimental/agent_loop/single_turn_agent_loop.py
++++ b/verl/experimental/agent_loop/single_turn_agent_loop.py
+@@ -88,6 +88,12 @@ class SingleTurnAgentLoop(AgentLoopBase):
+             [] if output.log_probs else None,
+             assistant_logprobs=output.log_probs if output.log_probs else None,
+         )
++        response_support_sizes = None
++        if output.support_sizes is not None:
++            # same edits as the log-probs: boundary tokens CT inserts get 0 (no replay)
++            _, response_support_sizes = self.continuous_token_builder.align_response_metadata(
++                merge_result, [], [], assistant_logprobs=output.support_sizes
++            )
+         response_ids = merge_result.token_ids[-len(response_mask) :] if response_mask else []
+         prompt_ids = merge_result.token_ids[: len(merge_result.token_ids) - len(response_mask)]
+ 
+@@ -96,6 +102,9 @@ class SingleTurnAgentLoop(AgentLoopBase):
+             response_ids=response_ids[: self.response_length],
+             response_mask=response_mask[: self.response_length],
+             response_logprobs=response_logprobs[: self.response_length] if response_logprobs else None,
++            response_support_sizes=(
++                [int(s) for s in response_support_sizes[: self.response_length]] if response_support_sizes else None
++            ),
+             routed_experts=(
+                 output.routed_experts[: len(prompt_ids) + self.response_length]
+                 if output.routed_experts is not None
+diff --git a/verl/trainer/ppo/v1/agent_loop_tq.py b/verl/trainer/ppo/v1/agent_loop_tq.py
+index 05f5604..1910e61 100644
+--- a/verl/trainer/ppo/v1/agent_loop_tq.py
++++ b/verl/trainer/ppo/v1/agent_loop_tq.py
+@@ -198,6 +198,18 @@ class AgentLoopWorkerTQ(AgentLoopWorker):
+             # TODO: uniform response_mask and loss_mask
+             field["loss_mask"] = field["response_mask"]
+             field["input_ids"] = input_ids
++            support_sizes = field.pop("rollout_support_sizes", None)
++            if support_sizes is not None:
++                # Laid out like the model's rolled labels: position t holds the kept-set size of the
++                # token at t + 1, so response token j sits at prompt_len - 1 + j; prompt positions and
++                # the last position are 0 (no replay).
++                assert support_sizes.size(0) == responses.size(0), (
++                    f"support sizes ({support_sizes.size(0)}) must match response tokens ({responses.size(0)})"
++                )
++                support = torch.zeros_like(input_ids)
++                start = prompts.size(0) - 1
++                support[start : start + support_sizes.size(0)] = support_sizes
++                field["rollout_support_size"] = support
+             field["position_ids"] = position_ids
+             field["multi_modal_inputs"] = multi_modal_inputs
+             fields.append(field)
+diff --git a/verl/trainer/ppo/v1/trainer_base.py b/verl/trainer/ppo/v1/trainer_base.py
+index ed3412b..32c5a60 100644
+--- a/verl/trainer/ppo/v1/trainer_base.py
++++ b/verl/trainer/ppo/v1/trainer_base.py
+@@ -1647,12 +1647,23 @@ class PPOTrainer(ABC):
+             tq.kv_batch_put(keys=batch.keys, partition_id=batch.partition_id, fields=data)
+             return batch
+ 
++        # Rollout support replay: the rollout log-probs are normalised over the set the truncated
++        # sampler kept (top-k/top-p/min-p); the actor supplies log(kept mass) from the same forward so
++        # that they can be put back on the full-vocabulary support before any IS/RS correction.
++        vllm_engine_kwargs = self.config.actor_rollout_ref.rollout.get("engine_kwargs", {}).get("vllm", {}) or {}
++        support_replay = bool(vllm_engine_kwargs.get("return_sampling_mask", False))
++        if support_replay:
++            assert self.config.actor_rollout_ref.rollout.calculate_log_probs, (
++                "rollout support replay corrects rollout_log_probs, so rollout.calculate_log_probs must be True"
++            )
++
+         # 1. compute log probs
+         batch.extra_info.update(
+             {
+                 "calculate_entropy": True,
+                 "compute_loss": False,
+                 "temperature": self.config.actor_rollout_ref.rollout.temperature,
++                "calculate_log_kept_mass": support_replay,
+             }
+         )
+         output: KVBatchMeta = self.actor_rollout_wg.compute_log_prob(batch)
+@@ -1661,14 +1672,28 @@ class PPOTrainer(ABC):
+         fields = ["entropy", "log_probs", "response_mask"]
+         if self.config.actor_rollout_ref.rollout.calculate_log_probs:
+             fields.extend(["responses", "rollout_log_probs"])
++        if support_replay:
++            fields.append("log_kept_mass")
+         data = tq.kv_batch_get(keys=batch.keys, partition_id=batch.partition_id, select_fields=fields)
+ 
+-        # 2. write old_log_probs and entropy back to TransferQueue
++        # 2. write old_log_probs and entropy (and the corrected rollout_log_probs) back to TransferQueue
+         data["old_log_probs"] = response_from_nested(data.pop("log_probs"), data["response_mask"])
+         data["entropy"] = response_from_nested(data.pop("entropy"), data["response_mask"])
+-        batch = tq.kv_batch_put(
+-            keys=batch.keys, partition_id=batch.partition_id, fields=data.select("old_log_probs", "entropy")
+-        )
++        put_fields = ["old_log_probs", "entropy"]
++        if support_replay:
++            log_kept_mass = response_from_nested(data.pop("log_kept_mass"), data["response_mask"])
++            rollout_log_probs = data["rollout_log_probs"]
++            assert torch.equal(rollout_log_probs.offsets(), log_kept_mass.offsets())
++            # Rebuild per sample, as response_from_nested does: a tensor from nested_tensor_from_jagged
++            # carries no max length, and TensorDict.to_padded_tensor then pads it to the total token count.
++            data["rollout_log_probs"] = torch.nested.as_nested_tensor(
++                [r + k.to(r.dtype) for r, k in zip(rollout_log_probs.unbind(), log_kept_mass.unbind(), strict=True)],
++                layout=torch.jagged,
++            )
++            put_fields.append("rollout_log_probs")
++            on_response = data["response_mask"].values().bool()
++            metrics["rollout_corr/log_kept_mass_mean"] = log_kept_mass.values()[on_response].mean().item()
++        batch = tq.kv_batch_put(keys=batch.keys, partition_id=batch.partition_id, fields=data.select(*put_fields))
+ 
+         data = DataProto(batch=data.to_padded_tensor())
+ 
+diff --git a/verl/utils/torch_functional.py b/verl/utils/torch_functional.py
+index 490ffc1..128f37f 100644
+--- a/verl/utils/torch_functional.py
++++ b/verl/utils/torch_functional.py
+@@ -704,6 +704,38 @@ def calculate_sum_pi_squared_from_logits(logits: torch.Tensor):
+     return torch.exp(torch.logsumexp(2.0 * logits, dim=-1) - 2.0 * torch.logsumexp(logits, dim=-1))
+ 
+ 
++def log_kept_mass_from_logits(logits: torch.Tensor, support_size: torch.Tensor, chunk_size: int = 1024):
++    """
++    Log of the probability mass a truncated sampler kept, from the trainer's own logits.
++
++    top-k, top-p and min-p all keep a prefix of the tokens sorted by probability, so the set the
++    rollout sampled from at a position is the |S| most likely tokens. Given |S| per position, this
++    returns logsumexp(top-|S| logits) - logsumexp(logits). Adding it to a rollout log-prob that was
++    normalised over the kept set puts that log-prob back on the full-vocabulary support.
++
++    Args:
++        logits: Temperature-scaled logits (N, vocab_size).
++        support_size: Kept-set size per position (N,); 0 means no replay there and yields 0.
++        chunk_size: Rows per chunk, to bound the temporary (chunk, vocab_size) buffers.
++
++    Returns:
++        Log kept mass (N,), float32, <= 0.
++    """
++    support_size = support_size.to(device=logits.device, dtype=torch.long)
++    out = torch.zeros(logits.shape[0], dtype=torch.float32, device=logits.device)
++    k_max = min(int(support_size.max().item()), logits.shape[-1]) if support_size.numel() else 0
++    if k_max <= 0:
++        return out
++    for start in range(0, logits.shape[0], chunk_size):
++        chunk = logits[start : start + chunk_size].float()
++        k = support_size[start : start + chunk_size]
++        # logsumexp of the top-k logits for every k up to k_max, then pick each row's own k
++        prefix = torch.logcumsumexp(torch.topk(chunk, k_max, dim=-1).values, dim=-1)
++        kept = prefix.gather(-1, (k.clamp(1, k_max) - 1).unsqueeze(-1)).squeeze(-1) - torch.logsumexp(chunk, dim=-1)
++        out[start : start + chunk_size] = torch.where(k > 0, kept, torch.zeros_like(kept))
++    return out
++
++
+ """
+ Optimizer related
+ """
+diff --git a/verl/workers/engine/fsdp/transformer_impl.py b/verl/workers/engine/fsdp/transformer_impl.py
+index c5cbc35..299add9 100644
+--- a/verl/workers/engine/fsdp/transformer_impl.py
++++ b/verl/workers/engine/fsdp/transformer_impl.py
+@@ -1156,6 +1156,7 @@ class FSDPEngineWithLMHead(FSDPEngine):
+         use_remove_padding = tu.get_non_tensor_data(data=micro_batch, key="use_remove_padding", default=True)
+         pad_mode = tu.get_non_tensor_data(data=micro_batch, key="pad_mode", default=DatasetPadMode.NO_PADDING)
+         use_fused_kernels = tu.get_non_tensor_data(data=micro_batch, key="use_fused_kernels", default=False)
++        calculate_log_kept_mass = tu.get_non_tensor_data(data=micro_batch, key="calculate_log_kept_mass", default=False)
+         temperature = micro_batch["temperature"]
+         temperature_item = temperature
+         temperature_is_one = _is_scalar_unit_temperature(temperature)
+@@ -1185,6 +1186,10 @@ class FSDPEngineWithLMHead(FSDPEngine):
+             # input_ids (bsz, j1)
+             temperature_rmpad = verl_F.expand_as_nested(temperature, input_ids).values()  # (total_nnz,)
+             temperature_rmpad = temperature_rmpad.unsqueeze(0)  # (1, total_nnz)
++            # rollout kept-set size per position, already aligned with the rolled labels (0 = no replay)
++            support_rmpad = (
++                micro_batch["rollout_support_size"].values().unsqueeze(0) if calculate_log_kept_mass else None
++            )  # (1, total_nnz)
+             packed_cu_seqlens = None
+ 
+             if pad_mode == DatasetPadMode.NO_PADDING:
+@@ -1211,6 +1216,8 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                 )
+                 input_ids_rmpad_rolled, _ = pad_packed_inputs(input_ids_rmpad_rolled, None, static_pad_size)
+                 temperature_rmpad, _ = pad_packed_inputs(temperature_rmpad, None, static_pad_size, pad_value=1)
++                if support_rmpad is not None:
++                    support_rmpad, _ = pad_packed_inputs(support_rmpad, None, static_pad_size, pad_value=0)
+ 
+             # pad and slice the inputs if sp > 1
+             sp_pad_size = 0
+@@ -1240,6 +1247,10 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                 temperature_rmpad, _, _ = ulysses_pad_and_slice_inputs(
+                     temperature_rmpad, position_ids_rmpad=None, sp_size=self.ulysses_sequence_parallel_size, pad_value=1
+                 )
++                if support_rmpad is not None:
++                    support_rmpad, _, _ = ulysses_pad_and_slice_inputs(
++                        support_rmpad, position_ids_rmpad=None, sp_size=self.ulysses_sequence_parallel_size, pad_value=0
++                    )
+ 
+                 sp_pad_size = pad_size
+ 
+@@ -1250,6 +1261,8 @@ class FSDPEngineWithLMHead(FSDPEngine):
+             temperature_rmpad = temperature_rmpad.squeeze(0)
+             output_args["input_ids_rmpad_rolled"] = input_ids_rmpad_rolled
+             output_args["temperature_rmpad"] = temperature_rmpad
++            if support_rmpad is not None:
++                output_args["support_size_rmpad"] = support_rmpad.squeeze(0)
+ 
+             # only pass input_ids and position_ids to enable flash_attn_varlen
+ 
+@@ -1284,6 +1297,8 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                 output_args["input_ids_rmpad_rolled"] = input_ids_rmpad_rolled
+                 # we store the per sample temperature
+                 output_args["temperature"] = temperature
++                if calculate_log_kept_mass:
++                    output_args["support_size_rmpad"] = micro_batch["rollout_support_size"].values()
+ 
+                 input_ids = torch.nested.to_padded_tensor(
+                     input_ids, padding=pad_token_id, output_size=(batch_size, max_seq_len)
+@@ -1339,6 +1354,13 @@ class FSDPEngineWithLMHead(FSDPEngine):
+         )
+         distillation_use_topk = tu.get_non_tensor_data(data=micro_batch, key="distillation_use_topk", default=False)
+         distillation_only = tu.get_non_tensor_data(data=micro_batch, key="distillation_only", default=False)
++        calculate_log_kept_mass = tu.get_non_tensor_data(data=micro_batch, key="calculate_log_kept_mass", default=False)
++
++        if calculate_log_kept_mass and use_fused_kernels:
++            raise NotImplementedError(
++                "rollout support replay is not supported with use_fused_kernels=True: "
++                "fused kernels do not materialize the logits needed for the kept mass."
++            )
+ 
+         if calculate_sum_pi_squared and use_fused_kernels:
+             raise NotImplementedError(
+@@ -1394,6 +1416,11 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                 if calculate_sum_pi_squared:
+                     sum_pi_squared_rmpad = verl_F.calculate_sum_pi_squared_from_logits(logits_rmpad)
+ 
++                if calculate_log_kept_mass:
++                    log_kept_mass_rmpad = verl_F.log_kept_mass_from_logits(
++                        logits_rmpad, output_args["support_size_rmpad"]
++                    )
++
+                 if calculate_entropy:
+                     if not self.engine_config.entropy_checkpointing:
+                         if self.engine_config.entropy_from_logits_with_chunking:
+@@ -1439,6 +1466,8 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                 entropy_rmpad = self._gather_and_unpad_packed(entropy_rmpad, pad_size)
+             if calculate_sum_pi_squared:
+                 sum_pi_squared_rmpad = self._gather_and_unpad_packed(sum_pi_squared_rmpad, pad_size)
++            if calculate_log_kept_mass:
++                log_kept_mass_rmpad = self._gather_and_unpad_packed(log_kept_mass_rmpad, pad_size)
+ 
+             if pad_mode == DatasetPadMode.NO_PADDING:
+                 cu_seqlens = input_ids.offsets()
+@@ -1449,6 +1478,8 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                     entropy = torch.nested.nested_tensor_from_jagged(entropy_rmpad, cu_seqlens)
+                 if calculate_sum_pi_squared:
+                     sum_pi_squared = torch.nested.nested_tensor_from_jagged(sum_pi_squared_rmpad, cu_seqlens)
++                if calculate_log_kept_mass:
++                    log_kept_mass = torch.nested.nested_tensor_from_jagged(log_kept_mass_rmpad, cu_seqlens)
+             else:
+                 raise NotImplementedError(f"pad_mode {pad_mode} not implemented")
+ 
+@@ -1517,6 +1548,12 @@ class FSDPEngineWithLMHead(FSDPEngine):
+                             )
+                             model_output[k] = torch.nested.nested_tensor_from_jagged(v, cu_seqlens)
+ 
++                    if calculate_log_kept_mass:
++                        log_kept_mass = torch.nested.nested_tensor_from_jagged(
++                            verl_F.log_kept_mass_from_logits(logits_rmpad, output_args["support_size_rmpad"]),
++                            cu_seqlens,
++                        )
++
+                     log_probs = None
+                     if not distillation_only:
+                         log_probs = logprobs_from_logits(logits=logits_rmpad, labels=input_ids_rmpad_rolled)
+@@ -1543,6 +1580,8 @@ class FSDPEngineWithLMHead(FSDPEngine):
+             model_output["entropy"] = entropy
+         if calculate_sum_pi_squared:
+             model_output["sum_pi_squared"] = sum_pi_squared
++        if calculate_log_kept_mass:
++            model_output["log_kept_mass"] = log_kept_mass
+ 
+         return model_output
+ 
+diff --git a/verl/workers/rollout/llm_server.py b/verl/workers/rollout/llm_server.py
+index a5c5731..ba1ced9 100644
+--- a/verl/workers/rollout/llm_server.py
++++ b/verl/workers/rollout/llm_server.py
+@@ -303,6 +303,10 @@ class FullyAsyncLLMServerClient(LLMServerClient):
+             final_output.token_ids.extend(output.token_ids)
+             if output.log_probs is not None:
+                 final_output.log_probs.extend(output.log_probs)
++            if output.support_sizes is not None:
++                if final_output.support_sizes is None:
++                    final_output.support_sizes = []
++                final_output.support_sizes.extend(output.support_sizes)
+             # On partial rollout resume the model version may differ, so keep
+             # existing routing and only append routing for newly generated tokens.
+             if output.routed_experts is not None and len(output.token_ids) > 0:
+diff --git a/verl/workers/rollout/replica.py b/verl/workers/rollout/replica.py
+index 23ac89d..54fb964 100644
+--- a/verl/workers/rollout/replica.py
++++ b/verl/workers/rollout/replica.py
+@@ -36,6 +36,8 @@ class TokenOutput(BaseModel):
+     """response token ids"""
+     log_probs: Optional[list[float]] = None
+     """logprobs of response token ids"""
++    support_sizes: Optional[list[int]] = None
++    """size of the set the sampler kept (top-k/top-p/min-p) at each response token, when replayed"""
+     routed_experts: Optional[Any] = None
+     """routed experts of response token ids"""
+     stop_reason: Optional[str] = None
+diff --git a/verl/workers/rollout/vllm_rollout/vllm_async_server.py b/verl/workers/rollout/vllm_rollout/vllm_async_server.py
+index ec560f6..43eccc9 100644
+--- a/verl/workers/rollout/vllm_rollout/vllm_async_server.py
++++ b/verl/workers/rollout/vllm_rollout/vllm_async_server.py
+@@ -725,6 +725,13 @@ class vLLMHttpServer:
+         if sampling_params.logprobs is not None:
+             log_probs = [logprobs[token_ids[i]].logprob for i, logprobs in enumerate(final_res.outputs[0].logprobs)]
+ 
++        # With return_sampling_mask, vLLM returns the kept token ids per position; the trainer only
++        # needs how many, since the kept set is the top-|S| tokens.
++        support_sizes = None
++        sampling_mask = getattr(final_res.outputs[0], "sampling_mask", None)
++        if sampling_mask is not None:
++            support_sizes = [len(ids) for ids in sampling_mask.token_ids]
++
+         routed_experts = None
+         if self.config.enable_rollout_routing_replay:
+             routed_experts = final_res.outputs[0].routed_experts
+@@ -764,6 +771,7 @@ class vLLMHttpServer:
+         return TokenOutput(
+             token_ids=token_ids,
+             log_probs=log_probs,
++            support_sizes=support_sizes,
+             routed_experts=routed_experts,
+             stop_reason=stop_reason,
+             num_preempted=num_preempted,

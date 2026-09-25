@@ -24,4 +24,4 @@ jobs:
       - run: python paper/check_pdf_current.py
       # verl/: every number its README states must trace to verl/results, by the repository's own tool
       - run: pip install -q doubleblind-audit==0.1.1
-      - run: cd verl && doubleblind trace README.md --data results/gates.json results/support_size_replay.json --no-color
+      - run: cd verl && doubleblind trace README.md --data results/gates.json results/support_size_replay.json results/long_summary.json results/replay_check_0p5b.json --no-color

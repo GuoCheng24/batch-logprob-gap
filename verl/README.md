@@ -4,11 +4,12 @@ verl asks vLLM for `processed_logprobs`. With `top_p`, `top_k` or `min_p` trunca
 distribution, those are normalised over the tokens that survived, while the actor's
 `old_log_probs` are normalised over the whole vocabulary. Every token's ratio then carries
 the kept probability mass, with no policy change at all. This directory measures what that
-does inside verl, and how little data a fix needs.
+does inside verl, how little data a fix needs, and what a prototype of that fix does over
+100 training steps.
 
-Everything here ran on verl `main` at 6093e00, vLLM 0.28.0, torch 2.13.0+cu126,
+Sections 1-3 ran on verl `main` at 6093e00, vLLM 0.28.0, torch 2.13.0+cu126,
 transformers 5.12.1, one NVIDIA L40, GRPO on GSM8K, 32 prompts x 4 samples per step,
-temperature 1.0.
+temperature 1.0. Section 4 uses the same software and settings on two RTX 4090s per run.
 
 ## 1. The term is in verl's own metrics
 
@@ -67,6 +68,44 @@ Where the two sets differ, they differ at the boundary, on tokens with almost no
 the two corrections agree to the fourth decimal. The count is 1 integer per token; the ids
 are |S| per token, and 1024 under a `top_k=1024` cap with `top_p=1.0`.
 
+## 4. Over 100 steps the stall holds, and replaying the support size ends it
+
+Qwen2.5-1.5B-Instruct, 100 steps per run, each run on two RTX 4090s (FSDP2 shards the
+optimizer; no CPU offload) ([run_long.sh](run_long.sh); every step is in
+[results/long_arms.json](results/long_arms.json), the table below in
+[results/long_summary.json](results/long_summary.json)). The replay run is verl with
+[prototype/support_size_replay.patch](prototype/) applied, plus `top_k=1024`, which vLLM
+requires before it replays the kept set.
+
+![Reward, rejected fraction, gradient norm and rollout_corr/kl over 100 steps for the five runs](results/long_arms.png)
+
+| run | reward, steps 1-10 | reward, last 20 steps | sequences rejected, mean | steps with zero gradient | `rollout_corr/kl`, mean |
+|---|---|---|---|---|---|
+| `top_p=0.8`, no correction | 0.34 | 0.83 | - | 0 | 0.039 |
+| `top_p=0.8`, Geo-RS defaults | 0.13 | 0.14 | **1.0** | **100** | 0.034 |
+| `top_p=0.8`, Seq-MIS defaults | 0.14 | 0.10 | **0.997** | **89** | 0.034 |
+| `top_p=0.8`, Geo-RS + support-size replay | 0.28 | 0.82 | 0.53 | 0 | 0.00029 |
+| `top_p=1.0`, Geo-RS defaults | 0.20 | 0.77 | 0.63 | 0 | 0.00043 |
+
+Geo-RS at `top_p=0.8` rejects every sequence at every one of the 100 steps, and verl prints
+its generic warning 100 times; the reward does not move, while the uncorrected run's climbs
+from 0.34 to 0.83. Seq-MIS lets a few sequences through in some steps, but every sequence is
+rejected in 86 of the 100 steps and 89 have zero gradient: its reward ends lower than it
+started.
+
+With the support size replayed, `rollout_corr/kl` falls from 0.034 to 0.00029, below the
+0.00043 of `top_p=1.0`, where nothing is truncated. Geo-RS then rejects 0.53 of the sequences,
+fewer than the 0.63 it rejects at `top_p=1.0`; the rest is the engine/trainer mismatch that
+section 2 finds even without truncation, and a `0.999_1.001` band is narrow enough to see it.
+The reward follows the uncorrected run (0.82 against 0.83 over the last 20 steps). About half
+the sequences are still rejected, and the replay run's mean gradient norm is 0.29, against
+0.42 without correction.
+
+The `top_k=1024` cap is not what helps. On Qwen2.5-0.5B-Instruct over 2 steps, Geo-RS at
+`top_p=0.8` with the cap but without the replay still rejects every sequence (kl 0.039 and
+0.040); with the replay it rejects 0.45 and 0.52 (kl 0.00051 and 0.00028)
+([results/replay_check_0p5b.json](results/replay_check_0p5b.json), `run_gates.sh replay_check`).
+
 ## Reproducing
 
 ```bash
@@ -74,15 +113,24 @@ python verl/examples/data_preprocess/gsm8k.py --local_save_dir ~/data/gsm8k   # 
 bash run_gates.sh 0a     # then 0b, 0c; each run writes logs/<tag>.log
 python collect.py results/gates.json logs/*.log
 python support_size_replay.py Qwen/Qwen2.5-1.5B-Instruct results/support_size_replay.json
+VERL_PATCHED=/path/to/patched/verl bash run_gates.sh replay_check
+bash run_long.sh 0,1 nocorr_tp08   # likewise geo_tp08, seqmis_tp08, geo_tp10, and geofix_tp08 with VERL_PATCHED
+python collect.py results/long_arms.json logs/long_*.log
+python summarize_long.py results/long_arms.json results/long_summary.json
+python plot_long.py results/long_arms.json results/long_arms.png
 ```
 
-`gate.sh` refuses to start on a GPU with less than 30 GB free. The raw logs are not committed:
-they are mostly Ray's and vLLM's own output, full of machine-specific paths; `collect.py`
+Unless `GPU=` pins the cards, `gate.sh` refuses to start on a GPU with less than 30 GB free.
+The raw logs are not committed: they are mostly Ray's and vLLM's own output, full of
+machine-specific paths; `collect.py`
 turns any set of them into the JSON above, and it reproduces the committed file from the
 original logs value for value.
 
 ## What this does not show
 
-Two steps per arm say that the gradient is zero, not what a long run does with it. Everything
-is one GPU and at most 1.5B. The trainer in section 3 is HF transformers, not verl's actor, so
-it bounds the replay error rather than measuring it in verl.
+One seed per run, two small models (0.5B and 1.5B), one node. Sections 1-3 are 2-3 steps per
+run; the 100-step runs of section 4 are on other cards (RTX 4090) and without CPU offload. The
+trainer in section 3 is HF transformers, not verl's actor, so it bounds the replay error rather
+than measuring it in verl. Section 4 does run the replay inside verl's actor, but only on the
+path the prototype covers: vLLM rollout, the single-turn agent loop, the v1 trainer, the FSDP
+engine without fused kernels, and decoupled mode.

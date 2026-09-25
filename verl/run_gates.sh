@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # The three gates behind results/gate0*.json, run sequentially on one GPU.
-#   bash run_gates.sh 0a|0b|0c
+#   bash run_gates.sh 0a|0b|0c|replay_check
 set -euo pipefail
 cd "$(dirname "$0")"
 GEO="algorithm.rollout_correction.rollout_rs=seq_mean_k1 algorithm.rollout_correction.rollout_rs_threshold=0.999_1.001"   # decoupled_geo_rs() defaults
 K3="algorithm.rollout_correction.rollout_rs=seq_mean_k3 algorithm.rollout_correction.rollout_rs_threshold=0.01"          # decoupled_k3_rs() defaults
 SEQMIS="algorithm.rollout_correction.rollout_is=sequence algorithm.rollout_correction.rollout_is_threshold=2.0 algorithm.rollout_correction.rollout_rs=seq_sum_k1 algorithm.rollout_correction.rollout_rs_threshold=0.5_2.0"  # decoupled_seq_is_rs() defaults
 TOKIS="algorithm.rollout_correction.rollout_is=token algorithm.rollout_correction.rollout_is_threshold=2.0"
-case "${1:?0a|0b|0c}" in
+case "${1:?0a|0b|0c|replay_check}" in
   0a)  # is the kept-mass term in verl's own metrics?  Qwen2.5-0.5B-Instruct, 3 steps
        for tp in 1.0 0.8; do STEPS=3 GPU_UTIL=0.35 bash gate.sh $tp 0a_tp${tp/./} $TOKIS; done ;;
   0b)  # what do the sequence-level presets do with it?  Qwen2.5-0.5B-Instruct, 2 steps
@@ -19,4 +19,11 @@ case "${1:?0a|0b|0c}" in
        bash gate.sh 1.0 0c_geo_tp10 $GEO
        bash gate.sh 0.8 0c_geo_tp08 $GEO
        bash gate.sh 0.8 0c_seqmis_tp08 $SEQMIS ;;
+  replay_check)  # is it the replay, or the top_k cap vLLM needs for it, that stops the rejection?  0.5B, 2 steps
+       # needs VERL_PATCHED=/path/to/verl with prototype/support_size_replay.patch applied
+       export OFFLOAD=0 MICRO=1
+       COMMON="actor_rollout_ref.rollout.agent.num_workers=2 +ray_kwargs.ray_init.object_store_memory=4000000000"
+       bash gate.sh 0.8 check_topk1024_noreplay $GEO actor_rollout_ref.rollout.top_k=1024 $COMMON
+       PYTHONPATH=${VERL_PATCHED:?path to patched verl} bash gate.sh 0.8 check_topk1024_replay $GEO \
+         actor_rollout_ref.rollout.top_k=1024 +actor_rollout_ref.rollout.engine_kwargs.vllm.return_sampling_mask=True $COMMON ;;
 esac

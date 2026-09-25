@@ -5,3 +5,5 @@ README.md   3      section number, step count and section cross-reference; setti
 README.md   2      section number and step count; settings, not results
 README.md   0.95   a top_p setting that labels a row, not a result
 README.md   30     the free-memory threshold gate.sh uses before starting, a setting
+README.md   10     "steps 1-10" labels a column, a step range
+README.md   4090   the GPU model name (RTX 4090), not a measurement
