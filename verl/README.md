@@ -19,10 +19,12 @@ Qwen2.5-0.5B-Instruct, token-level rollout IS, 3 steps (`0a_*` in [results/gates
 | `top_p=1.0` | 0.99994, 0.99984, 0.99995 | 0.00075, 0.00081, 0.00067 |
 | `top_p=0.8` | 0.96371, 0.96385, 0.96802 | 0.03921, 0.03900, 0.03449 |
 
-## 2. Two presets then reject everything, and training stops without a word
+## 2. Two presets then reject everything, and training stops behind a generic warning
 
-Qwen2.5-1.5B-Instruct, which earns reward on this task, so advantages are not zero; FSDP2
-with CPU offload; 2 steps (`0c_*`):
+Qwen2.5-1.5B-Instruct, which earns reward on this task; FSDP2 with CPU offload; 2 steps
+(`0c_*`). verl's sampler shuffles with an unseeded `torch.Generator`, whose seed is a fixed
+default, so every arm sees the same batches; on them the uncorrected arm's advantages run
+from -1.5 to 1.5.
 
 | arm | rejected sequences | `actor/grad_norm` | `critic/score/mean` |
 |---|---|---|---|
@@ -32,10 +34,14 @@ with CPU offload; 2 steps (`0c_*`):
 | Seq-MIS defaults, `top_p=0.8` | **1.0, 1.0** | **0.0, 0.0** | 0.07812, 0.21875 |
 
 "Defaults" are `decoupled_geo_rs()` (`seq_mean_k1`, `0.999_1.001`) and `decoupled_seq_is_rs()`
-(sequence IS at 2.0, `seq_sum_k1` at `0.5_2.0`). When every token is rejected verl drops
-`critic/advantages/*` from its metrics rather than logging anything; nothing warns. The
-rejection at `top_p=1.0` is the engine/trainer floor in this setup (sdpa,
-`use_remove_padding=False`), not checked with flash-attn.
+(sequence IS at 2.0, `seq_sum_k1` at `0.5_2.0`). When every token is rejected, the only sign
+is a generic warning at each step, `Response mask is all False, returning default advantage
+metrics`, with `critic/advantages/*` logged as NaN. Nothing in it names the rejection, the
+preset or the truncation behind it; the number that gives it away is `actor/grad_norm` at
+exactly 0. The
+rejection at `top_p=1.0` comes from the engine/trainer mismatch that remains without
+truncation in this setup (sdpa, `use_remove_padding=False`); it was not checked with
+flash-attn.
 
 The same pattern on Qwen2.5-0.5B-Instruct (`0b_*`) adds a third preset, K3-RS
 (`seq_mean_k3`, 0.01), which rejects nothing at either `top_p`: for a near-uniform shift K3
