@@ -1,0 +1,7 @@
+# Numbers in README.md that are settings or labels, not measurements.
+# Format:  <document glob>  <number>  <reason>
+README.md   32     prompts per training step, a setting
+README.md   3      section number, step count and section cross-reference; settings, not results
+README.md   2      section number and step count; settings, not results
+README.md   0.95   a top_p setting that labels a row, not a result
+README.md   30     the free-memory threshold gate.sh uses before starting, a setting

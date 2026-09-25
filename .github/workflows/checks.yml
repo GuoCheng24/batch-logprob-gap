@@ -22,3 +22,6 @@ jobs:
       # and the committed PDF must be the one built from that report, not a version behind it
       - run: sudo apt-get install -y -qq poppler-utils
       - run: python paper/check_pdf_current.py
+      # verl/: every number its README states must trace to verl/results, by the repository's own tool
+      - run: pip install -q doubleblind-audit==0.1.1
+      - run: cd verl && doubleblind trace README.md --data results/gates.json results/support_size_replay.json --no-color

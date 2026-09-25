@@ -203,6 +203,9 @@ DeepSeek-V3.2 keeps the sampling mask from rollout and applies it to the trained
 Mask", [arXiv 2512.02556](https://arxiv.org/abs/2512.02556)); what this adds is how large the term is
 when the mask is dropped. `scripts/trunc_bias.py` is the
 measurement; the trainer-side fix is a TRL change, not a change to this harness.
+Inside verl the same term does more than bias a ratio: with truncated sampling, two of its
+rollout-correction presets reject every sequence and training stops without a warning, and a
+fix needs only the size of the kept set, not its ids. That is measured in [verl/](verl/).
 
 ### Does it reach the reward
 
