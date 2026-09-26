@@ -41,6 +41,13 @@ for ax, (key, title, logy) in zip(axes.flat, PANELS):
             y = [max(v, 1e-5) for v in y]
         ax.plot(x, y, color=colour, alpha=0.25, lw=0.8)
         ax.plot(x, smooth(list(y)), color=colour, lw=1.8, label=label)
+        # a second run of the same arm, if there is one: dashed, 5-step mean only
+        steps2 = runs.get(tag + "_r2", {}).get("steps", {})
+        pts2 = [(int(s), steps2[s][key]) for s in sorted(steps2, key=int) if steps2[s].get(key) is not None]
+        if pts2:
+            x2, y2 = zip(*pts2)
+            y2 = [max(v, 1e-5) for v in y2] if logy else list(y2)
+            ax.plot(x2, smooth(list(y2)), color=colour, lw=1.2, ls="--")
     ax.set_title(title, fontsize=10)
     if logy:
         ax.set_yscale("log")
@@ -49,7 +56,7 @@ for ax in axes[1]:
     ax.set_xlabel("training step")
 axes[0][0].legend(fontsize=8, loc="best")
 fig.suptitle("Qwen2.5-1.5B-Instruct, GRPO on GSM8K, verl 6093e00 (replay arm: + prototype patch), "
-             "2x RTX 4090 per arm; thin: per step, thick: 5-step mean", fontsize=9)
+             "2x RTX 4090 per arm; thin: per step, thick: 5-step mean, dashed: second run", fontsize=9)
 fig.tight_layout()
 fig.savefig(sys.argv[2], dpi=130)
 print("wrote", sys.argv[2])

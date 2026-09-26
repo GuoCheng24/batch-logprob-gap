@@ -8,6 +8,8 @@ import statistics
 import sys
 
 ARMS = ["long_nocorr_tp08", "long_geo_tp08", "long_geofix_tp08", "long_geo_tp10", "long_seqmis_tp08"]
+# second runs of the arms whose outcome is random (vLLM sampling is unseeded; the prompt order is fixed)
+ARMS += ["long_nocorr_tp08_r2", "long_geofix_tp08_r2", "long_geo_tp10_r2"]
 
 
 def series(steps, key):

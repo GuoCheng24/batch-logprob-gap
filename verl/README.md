@@ -101,6 +101,12 @@ The reward follows the uncorrected run (0.82 against 0.83 over the last 20 steps
 the sequences are still rejected, and the replay run's mean gradient norm is 0.29, against
 0.42 without correction.
 
+A second run of the three arms whose outcome varies from run to run (vLLM sampling is
+unseeded; every run sees the same prompts at each step) lands in the same place, dashed in the
+figure. Over the last 20 steps the reward is 0.80 without correction, 0.80 with the replay and
+0.76 at `top_p=1.0`. The replay run rejects 0.53 of the sequences against 0.61 at `top_p=1.0`,
+with kl 0.00029 against 0.00042.
+
 The `top_k=1024` cap is not what helps. On Qwen2.5-0.5B-Instruct over 2 steps, Geo-RS at
 `top_p=0.8` with the cap but without the replay still rejects every sequence (kl 0.039 and
 0.040); with the replay it rejects 0.45 and 0.52 (kl 0.00051 and 0.00028)
@@ -114,7 +120,8 @@ bash run_gates.sh 0a     # then 0b, 0c; each run writes logs/<tag>.log
 python collect.py results/gates.json logs/*.log
 python support_size_replay.py Qwen/Qwen2.5-1.5B-Instruct results/support_size_replay.json
 VERL_PATCHED=/path/to/patched/verl bash run_gates.sh replay_check
-bash run_long.sh 0,1 nocorr_tp08   # likewise geo_tp08, seqmis_tp08, geo_tp10, and geofix_tp08 with VERL_PATCHED
+bash run_long.sh 0,1 nocorr_tp08   # likewise geo_tp08, seqmis_tp08, geo_tp10, and geofix_tp08 with VERL_PATCHED;
+                                   # RUN=r2 for the second runs
 python collect.py results/long_arms.json logs/long_*.log
 python summarize_long.py results/long_arms.json results/long_summary.json
 python plot_long.py results/long_arms.json results/long_arms.png
@@ -128,7 +135,8 @@ original logs value for value.
 
 ## What this does not show
 
-One seed per run, two small models (0.5B and 1.5B), one node. Sections 1-3 are 2-3 steps per
+Two runs for the no-correction, replay and `top_p=1.0` arms and one for the rest, two small
+models (0.5B and 1.5B), one node. Sections 1-3 are 2-3 steps per
 run; the 100-step runs of section 4 are on other cards (RTX 4090) and without CPU offload. The
 trainer in section 3 is HF transformers, not verl's actor, so it bounds the replay error rather
 than measuring it in verl. Section 4 does run the replay inside verl's actor, but only on the
